@@ -1,0 +1,88 @@
+# Laravel
+/vendor/
+/node_modules/
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/storage/*.key
+/storage/pail
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/testing/
+/storage/framework/views/
+/public/build
+/public/hot
+/public/storage
+/public/css/
+/public/js/
+/public/mix-manifest.json
+
+# Composer
+composer.lock
+composer.phar
+
+# NPM
+package-lock.json
+yarn.lock
+
+# IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.sublime-*
+/.idea/
+/.vscode/
+/.fleet/
+/.zed/
+/.nova/
+
+# Logs
+*.log
+error_log
+
+# Cache
+.cache
+*.cache
+.phpactor.json
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+phpunit.xml
+.phpunit.result.cache
+
+# Docker
+docker-compose.override.yml
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+.directory
+*.part
