@@ -13,7 +13,6 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
-
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -21,13 +20,42 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($credentials, $request->remember)) {
+        $remember = $request->has('remember');
+
+        if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+            
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Login successful',
+                    'redirect' => '/dashboard'
+                ]);
+            }
+            
             return redirect()->intended('/dashboard');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'The provided credentials do not match our records.'
+            ], 401);
         }
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
-        ]);
+        ])->onlyInput('email');
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        if ($request->wantsJson()) {
+            return response()->json(['redirect' => '/login']);
+        }
+        
+        return redirect('/login');
     }
 }

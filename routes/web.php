@@ -52,14 +52,16 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('notes', NoteController::class);
         Route::resource('reminders', ReminderController::class);
         
-        Route::prefix('settings')->name('settings.')->group(function () {
-            Route::get('/', [SettingsController::class, 'index'])->name('index');
-            Route::post('/profile', [SettingsController::class, 'updateProfile'])->name('updateProfile');
-            Route::post('/preferences', [SettingsController::class, 'updatePreferences'])->name('updatePreferences');
-            Route::post('/change-password', [SettingsController::class, 'changePassword'])->name('changePassword');
+        // Settings Routes
+Route::prefix('settings')->name('settings.')->middleware('auth')->group(function () {
+    Route::get('/', [SettingsController::class, 'index'])->name('index');
+    Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('updateProfile');
+    Route::put('/preferences', [SettingsController::class, 'updatePreferences'])->name('updatePreferences');
+    Route::put('/password', [SettingsController::class, 'changePassword'])->name('changePassword');
+    Route::delete('/account', [SettingsController::class, 'deleteAccount'])->name('deleteAccount');
+});
         });
     });
-});
 
 // Include admin routes
 require __DIR__.'/admin.php';
