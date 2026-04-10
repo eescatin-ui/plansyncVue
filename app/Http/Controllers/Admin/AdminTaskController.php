@@ -5,145 +5,191 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\ClassSchedule;
-use App\Models\Note;
-use App\Models\Reminder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class AdminTaskController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Show tasks management page (returns Vue SPA)
+     */
+    public function index()
     {
-        // Get all users for filter dropdown
-        $users = User::orderBy('name')->get();
-        
-        // Build tasks query
-        $query = Task::with('user')->latest();
+        return view('app');
+    }
+
+    /**
+     * API: Get tasks with filters and pagination (includes stats like AdminClasses)
+     */
+    public function api(Request $request)
+    {
+        $query = Task::with('user');
         
         // Apply filters
-        if ($request->has('status') && $request->status) {
+        if ($request->status) {
             $query->where('status', $request->status);
         }
         
-        if ($request->has('user_id') && $request->user_id) {
+        if ($request->category) {
+            $query->where('category', $request->category);
+        }
+        
+        if ($request->user_id) {
             $query->where('user_id', $request->user_id);
         }
         
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'like', "%{$request->search}%")
+                  ->orWhere('description', 'like', "%{$request->search}%");
             });
         }
         
-        $tasks = $query->paginate(10);
-        $allUsers = User::orderBy('name')->get();
+        $perPage = $request->get('per_page', 10);
+        $tasks = $query->latest()->paginate($perPage);
         
-        // Calculate stats
+        // Get all users for filter dropdown
+        $users = User::orderBy('name')->get(['id', 'name', 'email']);
+        
+        // Calculate stats - same pattern as AdminClasses
         $stats = [
-            'totalUsers' => User::count(),
-            'totalClasses' => ClassSchedule::count(),
             'totalTasks' => Task::count(),
-            'totalNotes' => Note::count(),
-            'totalReminders' => Reminder::count(),
             'pendingTasks' => Task::where('status', 'todo')->count(),
             'inProgressTasks' => Task::where('status', 'inprogress')->count(),
             'completedTasks' => Task::where('status', 'done')->count(),
         ];
         
-        return view('admin.tasks.index', [
+        // Return in same format as AdminClasses
+        return response()->json([
             'tasks' => $tasks,
             'users' => $users,
-            'allUsers' => $allUsers,
-            'stats' => $stats,
-            'pendingTasks' => $stats['pendingTasks'],
-            'inProgressTasks' => $stats['inProgressTasks'],
-            'completedTasks' => $stats['completedTasks'],
+            'stats' => $stats
         ]);
     }
-
-    public function create()
+    
+    /**
+     * API: Get single task
+     */
+    public function show($id)
     {
-        // This will be handled by the modal
-        return redirect()->route('admin.tasks.index');
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'required|date',
-            'status' => 'required|in:todo,inprogress,done',
-            'priority' => 'nullable|in:low,medium,high',
-        ]);
-        
         try {
-            $task = Task::create([
-                'user_id' => $request->user_id,
-                'title' => $request->title,
-                'description' => $request->description,
-                'due_date' => $request->due_date,
-                'status' => $request->status,
-                'priority' => $request->priority,
-            ]);
-            
-            return redirect()->route('admin.tasks.index')
-                ->with('success', 'Task created successfully!');
-                
+            $task = Task::with('user')->findOrFail($id);
+            return response()->json($task);
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error creating task: ' . $e->getMessage());
-        }
-    }
-
-    public function edit($id)
-    {
-        // This will be handled by the modal
-        return redirect()->route('admin.tasks.index');
-    }
-
-    public function update(Request $request, $id)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'required|date',
-            'status' => 'required|in:todo,inprogress,done',
-            'priority' => 'nullable|in:low,medium,high',
-        ]);
-        
-        try {
-            $task = Task::findOrFail($id);
-            
-            $task->update([
-                'user_id' => $request->user_id,
-                'title' => $request->title,
-                'description' => $request->description,
-                'due_date' => $request->due_date,
-                'status' => $request->status,
-                'priority' => $request->priority,
-            ]);
-            
-            return redirect()->route('admin.tasks.index')
-                ->with('success', 'Task updated successfully!');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error updating task: ' . $e->getMessage());
+            return response()->json(['error' => 'Task not found'], 404);
         }
     }
     
+    /**
+     * API: Get task statistics (standalone endpoint - kept for backward compatibility)
+     */
+    public function stats()
+    {
+        $stats = [
+            'totalTasks' => Task::count(),
+            'pendingTasks' => Task::where('status', 'todo')->count(),
+            'inProgressTasks' => Task::where('status', 'inprogress')->count(),
+            'completedTasks' => Task::where('status', 'done')->count(),
+        ];
+        
+        return response()->json($stats);
+    }
+    
+    /**
+     * API: Get overdue tasks
+     */
+    public function overdue()
+    {
+        $overdueTasks = Task::with('user')
+            ->where('status', '!=', 'done')
+            ->where('due_date', '<', now())
+            ->get();
+        
+        return response()->json($overdueTasks);
+    }
+    
+    /**
+     * API: Get all users for dropdown
+     */
+    public function users()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * API: Create task
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'due_date' => 'required|date',
+            'status' => 'required|in:todo,inprogress,done',
+            'priority' => 'nullable|in:low,medium,high',
+            'category' => 'nullable|in:work,personal,shopping,health,other',
+        ]);
+        
+        try {
+            $task = Task::create($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Task created successfully',
+                'task' => $task
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating task: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * API: Update task
+     */
+    public function update(Request $request, $id)
+    {
+        try {
+            $task = Task::findOrFail($id);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Task not found'
+            ], 404);
+        }
+        
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'due_date' => 'required|date',
+            'status' => 'required|in:todo,inprogress,done',
+            'priority' => 'nullable|in:low,medium,high',
+            'category' => 'nullable|in:work,personal,shopping,health,other',
+        ]);
+        
+        try {
+            $task->update($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Task updated successfully',
+                'task' => $task
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating task: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * API: Delete task
+     */
     public function destroy($id)
     {
         try {
@@ -151,12 +197,15 @@ class AdminTaskController extends Controller
             $taskTitle = $task->title;
             $task->delete();
             
-            return redirect()->route('admin.tasks.index')
-                ->with('success', 'Task "' . $taskTitle . '" deleted successfully!');
-            
+            return response()->json([
+                'success' => true,
+                'message' => "Task '{$taskTitle}' deleted successfully"
+            ]);
         } catch (\Exception $e) {
-            return redirect()->route('admin.tasks.index')
-                ->with('error', 'Error deleting task: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting task: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

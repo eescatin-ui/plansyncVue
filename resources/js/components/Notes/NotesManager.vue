@@ -1,181 +1,155 @@
 <template>
-    <div class="notes-container">
+    <div class="notes-manager">
         <!-- Module Header -->
         <div class="module-header">
-            <h2 class="module-title">
-                <i class="fas fa-sticky-note"></i> Notes
-            </h2>
+            <div class="header-left">
+                <h2 class="module-title">
+                    <i class="fas fa-sticky-note"></i> Notes
+                </h2>
+                <div class="notes-summary">
+                    <div class="summary-item">
+                        <i class="fas fa-sticky-note"></i>
+                        <span class="summary-label">Total Notes</span>
+                        <span class="summary-value">{{ notes.length }}</span>
+                    </div>
+                </div>
+            </div>
             <button class="btn btn-primary" @click="openAddModal">
                 <i class="fas fa-plus"></i> Add Note
             </button>
         </div>
 
-        <!-- Search Box -->
-        <div class="search-box-wrapper" style="margin-bottom: 2rem; max-width: 400px;">
-            <div class="search-input-group">
+        <!-- Search Bar -->
+        <div class="quick-actions">
+            <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input 
                     type="text" 
                     v-model="searchQuery" 
-                    @input="onSearchInput"
-                    placeholder="Search notes..." 
-                    class="form-control"
+                    @input="debouncedSearch"
+                    placeholder="Search notes..."
                 >
-                <button @click="performSearch" class="btn btn-small">Search</button>
-                <button 
-                    v-if="searchQuery" 
-                    @click="clearSearch" 
-                    class="btn btn-small btn-secondary"
-                >
-                    Clear
+                <button v-if="searchQuery" class="clear-search" @click="clearSearch">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
 
         <!-- Loading State -->
-        <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+        <div v-if="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading notes...</p>
         </div>
 
         <!-- Notes Grid -->
         <div v-else class="notes-grid">
             <div 
-                v-for="note in notes" 
-                :key="note.id" 
+                v-for="note in filteredNotes" 
+                :key="note.id"
                 class="note-card"
-                @click="handleNoteClick(note)"
+                @click="openEditModal(note)"
             >
-                <div class="note-card-header">
+                <div class="card-header">
                     <div class="note-title">{{ note.title }}</div>
                     <div class="note-date">{{ formatDate(note.created_at) }}</div>
                 </div>
-                <div class="note-card-content">
-                    {{ truncateContent(note.content) }}
+                <div class="card-body">
+                    <div class="note-content">{{ truncateContent(note.content) }}</div>
+                    <div v-if="note.tags && note.tags.length" class="note-tags">
+                        <span v-for="tag in note.tags" :key="tag" class="tag">{{ tag }}</span>
+                    </div>
                 </div>
-                <div v-if="note.tags && note.tags.length" class="note-tags">
-                    <span v-for="tag in note.tags" :key="tag" class="tag">
-                        {{ tag }}
-                    </span>
-                </div>
-                <div class="note-actions" @click.stop>
-                    <button 
-                        type="button" 
-                        class="btn btn-small btn-edit" 
-                        @click="openEditModal(note)"
-                    >
-                        <i class="fas fa-edit"></i> Edit
+                <div class="card-footer" @click.stop>
+                    <button class="icon-btn edit-btn" @click="openEditModal(note)">
+                        <i class="fas fa-edit"></i>
                     </button>
-                    <button 
-                        type="button" 
-                        class="btn btn-small btn-danger" 
-                        @click="deleteNote(note)"
-                    >
-                        <i class="fas fa-trash"></i> Delete
+                    <button class="icon-btn delete-btn" @click="deleteNote(note)">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Empty State -->
-            <div v-if="notes.length === 0" class="empty-state">
+            <div v-if="filteredNotes.length === 0" class="empty-state">
                 <i class="fas fa-sticky-note"></i>
-                <p>{{ emptyStateMessage }}</p>
+                <p>{{ emptyMessage }}</p>
+                <button class="btn btn-primary" @click="openAddModal">
+                    <i class="fas fa-plus"></i> Create Your First Note
+                </button>
             </div>
-        </div>
-
-        <!-- Pagination -->
-        <div v-if="pagination.last_page > 1" class="pagination-container mt-4">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
-                        <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page - 1)">
-                            Previous
-                        </a>
-                    </li>
-                    <li 
-                        v-for="page in pagination.last_page" 
-                        :key="page"
-                        class="page-item" 
-                        :class="{ active: pagination.current_page === page }"
-                    >
-                        <a class="page-link" href="#" @click.prevent="changePage(page)">
-                            {{ page }}
-                        </a>
-                    </li>
-                    <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
-                        <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page + 1)">
-                            Next
-                        </a>
-                    </li>
-                </ul>
-            </nav>
         </div>
 
         <!-- Add/Edit Note Modal -->
         <div v-if="showModal" class="modal-overlay" @click="closeModal">
             <div class="modal-container" @click.stop>
                 <div class="modal-header">
-                    <h5 class="modal-title">{{ modalMode === 'add' ? 'Add New Note' : 'Edit Note' }}</h5>
-                    <button type="button" class="btn-close" @click="closeModal" :disabled="saving">×</button>
+                    <h5 class="modal-title">
+                        <i :class="modalMode === 'add' ? 'fas fa-plus-circle' : 'fas fa-edit'"></i>
+                        {{ modalMode === 'add' ? 'Create New Note' : 'Edit Note' }}
+                    </h5>
+                    <button type="button" class="btn-close" @click="closeModal">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
+                
                 <div class="modal-body">
                     <form @submit.prevent="saveNote">
                         <div class="form-group">
-                            <label for="note_title">Title <span class="text-danger">*</span></label>
+                            <label>Title <span class="text-danger">*</span></label>
                             <input 
                                 type="text" 
                                 class="form-control" 
-                                id="note_title" 
-                                v-model="form.title" 
+                                v-model="form.title"
+                                placeholder="Enter note title"
                                 required
                                 :disabled="saving"
-                                placeholder="Enter note title"
                             >
-                            <div v-if="errors.title" class="text-danger mt-1">{{ errors.title[0] }}</div>
+                            <div v-if="errors.title" class="error-message">{{ errors.title[0] }}</div>
                         </div>
-                        
+
                         <div class="form-group">
-                            <label for="note_content">Content <span class="text-danger">*</span></label>
+                            <label>Content</label>
                             <textarea 
                                 class="form-control" 
-                                id="note_content" 
-                                v-model="form.content" 
-                                rows="8" 
-                                required
-                                :disabled="saving"
+                                v-model="form.content"
+                                rows="8"
                                 placeholder="Write your note content here..."
+                                :disabled="saving"
                             ></textarea>
-                            <div v-if="errors.content" class="text-danger mt-1">{{ errors.content[0] }}</div>
+                            <div v-if="errors.content" class="error-message">{{ errors.content[0] }}</div>
                         </div>
-                        
+
                         <div class="form-group">
-                            <label for="note_tags">Tags (comma-separated)</label>
+                            <label>Tags (comma-separated)</label>
                             <input 
                                 type="text" 
                                 class="form-control" 
-                                id="note_tags" 
-                                v-model="form.tags" 
-                                placeholder="e.g., math, exam, project"
+                                v-model="form.tags"
+                                placeholder="e.g., important, work, personal"
                                 :disabled="saving"
                             >
-                            <small class="text-muted">Separate tags with commas (e.g., important, personal, work)</small>
-                            <div v-if="errors.tags" class="text-danger mt-1">{{ errors.tags[0] }}</div>
+                            <small class="text-muted">Separate tags with commas</small>
+                            <div v-if="errors.tags" class="error-message">{{ errors.tags[0] }}</div>
                         </div>
                     </form>
                 </div>
+
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @click="closeModal" :disabled="saving">
+                    <button 
+                        v-if="modalMode === 'edit'" 
+                        type="button" 
+                        class="btn btn-danger" 
+                        @click="deleteNoteFromModal"
+                        :disabled="deleting"
+                    >
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button type="button" class="btn btn-secondary" @click="closeModal">
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
-                        class="btn btn-primary" 
-                        @click="saveNote" 
-                        :disabled="saving"
-                    >
-                        <span v-if="saving" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        {{ saving ? 'Saving...' : (modalMode === 'add' ? 'Save Note' : 'Update Note') }}
+                    <button type="button" class="btn btn-primary" @click="saveNote" :disabled="saving">
+                        <i v-if="saving" class="fas fa-spinner fa-spin"></i>
+                        {{ saving ? 'Saving...' : (modalMode === 'add' ? 'Create Note' : 'Update Note') }}
                     </button>
                 </div>
             </div>
@@ -186,24 +160,22 @@
             <div class="modal-container modal-sm" @click.stop>
                 <div class="modal-header">
                     <h5 class="modal-title">Delete Note</h5>
-                    <button type="button" class="btn-close" @click="closeDeleteModal" :disabled="deleting">×</button>
+                    <button type="button" class="btn-close" @click="closeDeleteModal">×</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body text-center">
+                    <div class="delete-icon">
+                        <i class="fas fa-trash-alt fa-4x text-danger"></i>
+                    </div>
                     <p>Are you sure you want to delete "<strong>{{ noteToDelete?.title }}</strong>"?</p>
                     <p class="text-danger">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @click="closeDeleteModal" :disabled="deleting">
+                    <button type="button" class="btn btn-secondary" @click="closeDeleteModal">
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
-                        class="btn btn-danger" 
-                        @click="confirmDelete"
-                        :disabled="deleting"
-                    >
-                        <span v-if="deleting" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        {{ deleting ? 'Deleting...' : 'Delete' }}
+                    <button type="button" class="btn btn-danger" @click="confirmDelete">
+                        <i v-if="deleting" class="fas fa-spinner fa-spin"></i>
+                        {{ deleting ? 'Deleting...' : 'Yes, Delete' }}
                     </button>
                 </div>
             </div>
@@ -213,6 +185,7 @@
 
 <script>
 import axios from 'axios';
+import _ from 'lodash';
 
 export default {
     name: 'NotesManager',
@@ -220,124 +193,93 @@ export default {
     data() {
         return {
             notes: [],
-            pagination: {
-                current_page: 1,
-                last_page: 1,
-                per_page: 12,
-                total: 0
-            },
             searchQuery: '',
-            loading: true,
+            loading: false,
             saving: false,
             deleting: false,
-            modalMode: 'add', 
+            modalMode: 'add',
             showModal: false,
             showDeleteModal: false,
+            noteToDelete: null,
+            
             form: {
                 id: null,
                 title: '',
                 content: '',
                 tags: ''
             },
+            
             errors: {},
-            noteToDelete: null,
+            
             searchTimeout: null
         };
     },
 
     computed: {
-        emptyStateMessage() {
-            return this.searchQuery 
-                ? 'No notes found matching your search.' 
-                : 'No notes yet. Click "Add Note" to create your first note!';
+        filteredNotes() {
+            let filtered = [...this.notes];
+            
+            if (this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                filtered = filtered.filter(note => 
+                    note.title.toLowerCase().includes(query) ||
+                    (note.content && note.content.toLowerCase().includes(query)) ||
+                    (note.tags && note.tags.some(tag => tag.toLowerCase().includes(query)))
+                );
+            }
+            
+            return filtered;
+        },
+        
+        emptyMessage() {
+            if (this.searchQuery) {
+                return `No notes match "${this.searchQuery}". Try a different search term.`;
+            }
+            return 'No notes yet. Click "Add Note" to create your first note!';
         }
     },
 
     mounted() {
-        console.log('NotesManager mounted');
         this.fetchNotes();
+        this.debouncedSearch = _.debounce(this.applySearch, 300);
     },
 
     methods: {
-        // Search with debounce
-        onSearchInput() {
-            clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => {
-                this.performSearch();
-            }, 500);
-        },
-
-        // Fetch notes from API
-        async fetchNotes(page = 1) {
+        async fetchNotes() {
             this.loading = true;
             try {
-                const response = await axios.get('/notes', {
-                    params: {
-                        q: this.searchQuery,
-                        page: page
-                    }
-                });
-                
-                console.log('Notes fetched:', response.data);
-                
-                // Handle both paginated and non-paginated responses
-                if (response.data.data) {
-                    this.notes = response.data.data;
-                    this.pagination = {
-                        current_page: response.data.current_page,
-                        last_page: response.data.last_page,
-                        per_page: response.data.per_page,
-                        total: response.data.total
-                    };
-                } else {
-                    this.notes = response.data;
-                }
+                const response = await axios.get('/notes');
+                this.notes = response.data;
+                console.log('Notes loaded:', this.notes);
             } catch (error) {
                 console.error('Failed to fetch notes:', error);
-                this.showNotification('Failed to load notes. Please refresh the page.', 'error');
+                this.showNotification('Failed to load notes.', 'error');
             } finally {
                 this.loading = false;
             }
         },
 
-        // Format date for display
         formatDate(date) {
-            return new Date(date).toLocaleDateString('en-US', {
+            if (!date) return '';
+            const d = new Date(date);
+            return d.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric'
             });
         },
 
-        // Truncate long content
         truncateContent(content) {
-            return content.length > 200 ? content.substring(0, 200) + '...' : content;
+            if (!content) return '';
+            return content.length > 150 ? content.substring(0, 150) + '...' : content;
         },
 
-        // Handle note click (optional - you can navigate to detail view)
-        handleNoteClick(note) {
-            console.log('Note clicked:', note);
+        applySearch() {},
 
-        },
-
-        // Search functionality
-        async performSearch() {
-            await this.fetchNotes(1);
-        },
-
-        // Clear search
         clearSearch() {
             this.searchQuery = '';
-            this.fetchNotes(1);
         },
 
-        // Change page
-        async changePage(page) {
-            if (page < 1 || page > this.pagination.last_page) return;
-            await this.fetchNotes(page);
-        },
-
-        // Open modal for adding a new note
         openAddModal() {
             this.modalMode = 'add';
             this.form = {
@@ -348,95 +290,122 @@ export default {
             };
             this.errors = {};
             this.showModal = true;
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            document.body.style.overflow = 'hidden';
         },
 
-        // Open modal for editing a note
-        openEditModal(note) {
+        async openEditModal(note) {
             this.modalMode = 'edit';
-            this.form = {
-                id: note.id,
-                title: note.title,
-                content: note.content,
-                tags: note.tags ? note.tags.join(', ') : ''
-            };
-            this.errors = {};
             this.showModal = true;
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            document.body.style.overflow = 'hidden';
+            
+            try {
+                const response = await axios.get(`/notes/${note.id}/edit`);
+                const noteData = response.data;
+                
+                this.form = {
+                    id: noteData.id,
+                    title: noteData.title,
+                    content: noteData.content || '',
+                    tags: noteData.tags ? noteData.tags.join(', ') : ''
+                };
+                
+                this.errors = {};
+            } catch (error) {
+                console.error('Error loading note:', error);
+                this.showNotification('Failed to load note data.', 'error');
+                this.closeModal();
+            }
         },
 
-        // Close modal
         closeModal() {
             this.showModal = false;
             this.errors = {};
-            document.body.style.overflow = ''; // Restore scrolling
+            document.body.style.overflow = '';
         },
 
-        // Save note (create or update)
-       async saveNote() {
-    this.saving = true;
-    this.errors = {};
-    
-    try {
-        // Send tags as a string (comma-separated) - NOT as an array
-        const formData = {
-            title: this.form.title,
-            content: this.form.content,
-            tags: this.form.tags // Send as string, not array
-        };
-
-        let response;
-        if (this.modalMode === 'add') {
-            // Create new note
-            response = await axios.post('/notes', formData);
-            this.notes.unshift(response.data); // Add to beginning of list
-            this.showNotification('Note created successfully!', 'success');
-        } else {
-            // Update existing note
-            response = await axios.put(`/notes/${this.form.id}`, formData);
-            const index = this.notes.findIndex(n => n.id === this.form.id);
-            if (index !== -1) {
-                this.notes.splice(index, 1, response.data); // Replace with updated note
+        async saveNote() {
+            this.saving = true;
+            this.errors = {};
+            
+            try {
+                if (!this.form.title.trim()) {
+                    this.errors.title = ['Note title is required.'];
+                    this.saving = false;
+                    return;
+                }
+                
+                const formData = {
+                    title: this.form.title,
+                    content: this.form.content,
+                    tags: this.form.tags
+                };
+                
+                let response;
+                if (this.modalMode === 'add') {
+                    response = await axios.post('/notes', formData);
+                    this.notes.unshift(response.data);
+                    this.showNotification('Note created successfully!', 'success');
+                } else {
+                    response = await axios.put(`/notes/${this.form.id}`, formData);
+                    const index = this.notes.findIndex(n => n.id === this.form.id);
+                    if (index !== -1) {
+                        this.notes.splice(index, 1, response.data);
+                    }
+                    this.showNotification('Note updated successfully!', 'success');
+                }
+                
+                this.closeModal();
+                
+            } catch (error) {
+                if (error.response && error.response.status === 422) {
+                    this.errors = error.response.data.errors;
+                    const errorMessages = Object.values(this.errors).flat().join('\n');
+                    this.showNotification(`Validation errors:\n${errorMessages}`, 'error');
+                } else {
+                    this.showNotification('Failed to save note. Please try again.', 'error');
+                }
+            } finally {
+                this.saving = false;
             }
-            this.showNotification('Note updated successfully!', 'success');
-        }
-        
-        this.closeModal();
-    } catch (error) {
-        if (error.response && error.response.status === 422) {
-            // Validation errors
-            this.errors = error.response.data.errors;
-        } else {
-            console.error('Save failed:', error);
-            this.showNotification('Failed to save note. Please try again.', 'error');
-        }
-    } finally {
-        this.saving = false;
-    }
-},
-
-        // Delete note (show confirmation)
-        deleteNote(note) {
-            this.noteToDelete = note;
-            this.showDeleteModal = true;
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
         },
 
-        // Close delete modal
+        deleteNote(note) {
+            this.noteToDelete = {
+                id: note.id,
+                title: note.title
+            };
+            this.showDeleteModal = true;
+            document.body.style.overflow = 'hidden';
+        },
+
+        deleteNoteFromModal() {
+            if (!this.form || !this.form.id) return;
+            
+            this.noteToDelete = {
+                id: this.form.id,
+                title: this.form.title
+            };
+            
+            this.closeModal();
+            this.showDeleteModal = true;
+            document.body.style.overflow = 'hidden';
+        },
+
         closeDeleteModal() {
             this.showDeleteModal = false;
             this.noteToDelete = null;
-            document.body.style.overflow = ''; // Restore scrolling
+            this.deleting = false;
+            document.body.style.overflow = '';
         },
 
-        // Confirm delete
         async confirmDelete() {
+            if (!this.noteToDelete || !this.noteToDelete.id) return;
+            
             this.deleting = true;
             
             try {
                 await axios.delete(`/notes/${this.noteToDelete.id}`);
                 
-                // Remove from list
                 const index = this.notes.findIndex(n => n.id === this.noteToDelete.id);
                 if (index !== -1) {
                     this.notes.splice(index, 1);
@@ -444,15 +413,13 @@ export default {
                 
                 this.showNotification('Note deleted successfully!', 'success');
                 this.closeDeleteModal();
+                
             } catch (error) {
-                console.error('Delete failed:', error);
                 this.showNotification('Failed to delete note. Please try again.', 'error');
-            } finally {
                 this.deleting = false;
             }
         },
 
-        // Show notification 
         showNotification(message, type = 'info') {
             alert(message);
         }
@@ -461,148 +428,275 @@ export default {
 </script>
 
 <style scoped>
-.notes-container {
-    width: 100%;
+.notes-manager {
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
+/* Header */
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.module-title {
+    font-size: 2rem;
+    color: #4361ee;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.notes-summary {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.summary-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #212529;
+}
+
+/* Search */
+.quick-actions {
+    margin-bottom: 2rem;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 30px;
+    padding: 0.5rem 1rem;
+    max-width: 400px;
+}
+
+.search-box i {
+    color: #6c757d;
+    margin-right: 0.5rem;
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    flex: 1;
+    outline: none;
+    font-size: 0.95rem;
+}
+
+.clear-search {
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.clear-search:hover {
+    color: #dc3545;
+}
+
+/* Notes Grid */
 .notes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.5rem;
 }
 
 .note-card {
-    background-color: white;
-    border-radius: 8px;
-    padding: 1.5rem;
+    background: white;
+    border-radius: 12px;
+    padding: 1.2rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    height: 300px;
-    display: flex;
-    flex-direction: column;
+    transition: all 0.3s;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    border: 1px solid #e9ecef;
 }
 
 .note-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
-.note-card-header {
+.card-header {
     display: flex;
     justify-content: space-between;
-    align-items: start;
+    align-items: center;
     margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--light-gray, #e9ecef);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #f1f3f5;
 }
 
 .note-title {
     font-weight: 600;
     font-size: 1.1rem;
-    color: var(--primary, #4361ee);
-    flex: 1;
-    word-break: break-word;
+    color: #4361ee;
 }
 
 .note-date {
-    font-size: 0.8rem;
-    color: var(--gray, #6c757d);
-    white-space: nowrap;
-    margin-left: 1rem;
+    font-size: 0.75rem;
+    color: #6c757d;
 }
 
-.note-card-content {
-    flex: 1;
-    overflow-y: auto;
-    color: var(--dark, #212529);
-    line-height: 1.6;
+.card-body {
     margin-bottom: 1rem;
-    word-break: break-word;
+}
+
+.note-content {
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    min-height: 60px;
 }
 
 .note-tags {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1rem;
     flex-wrap: wrap;
+    margin-top: 0.5rem;
 }
 
 .tag {
-    background-color: var(--light-gray, #e9ecef);
+    background: #e9ecef;
     padding: 0.2rem 0.6rem;
     border-radius: 20px;
-    font-size: 0.8rem;
-    color: var(--gray, #6c757d);
+    font-size: 0.7rem;
+    color: #6c757d;
 }
 
-.note-actions {
+.card-footer {
     display: flex;
+    justify-content: flex-end;
     gap: 0.5rem;
-    margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid var(--light-gray, #e9ecef);
+    padding-top: 0.8rem;
+    border-top: 1px solid #f1f3f5;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-.search-input-group {
+.note-card:hover .card-footer {
+    opacity: 1;
+}
+
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: #f8f9fa;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background-color: var(--light-gray, #f8f9fa);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    justify-content: center;
+    color: #6c757d;
+    transition: all 0.2s;
 }
 
-.search-input-group .form-control {
-    border: none;
-    background: transparent;
-    flex: 1;
+.icon-btn:hover {
+    transform: scale(1.1);
 }
 
-.search-input-group .form-control:focus {
-    outline: none;
-    box-shadow: none;
+.edit-btn:hover {
+    background: #4361ee;
+    color: white;
 }
 
-.search-input-group i {
-    color: var(--gray, #6c757d);
+.delete-btn:hover {
+    background: #dc3545;
+    color: white;
 }
 
+/* Empty State */
 .empty-state {
     text-align: center;
-    padding: 3rem;
-    color: var(--gray, #6c757d);
+    padding: 4rem 2rem;
+    background: #f8f9fa;
+    border-radius: 12px;
     grid-column: 1 / -1;
 }
 
 .empty-state i {
-    font-size: 3rem;
+    font-size: 4rem;
+    color: #dee2e6;
     margin-bottom: 1rem;
-    color: var(--light-gray, #dee2e6);
 }
 
-/* Modal Styles */
+.empty-state p {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+/* Loading */
+.loading-state {
+    text-align: center;
+    padding: 4rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f1f3f5;
+    border-top-color: #4361ee;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1050;
+    backdrop-filter: blur(4px);
 }
 
 .modal-container {
-    background-color: white;
-    border-radius: 8px;
+    background: white;
+    border-radius: 16px;
     width: 90%;
-    max-width: 800px;
+    max-width: 550px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
 .modal-container.modal-sm {
@@ -610,45 +704,41 @@ export default {
 }
 
 .modal-header {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #dee2e6;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
     background: white;
-    z-index: 1;
 }
 
 .modal-title {
-    margin: 0;
     font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .btn-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
 }
 
 .btn-close:hover {
+    background: #f8f9fa;
     color: #dc3545;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-}
-
-.btn-close:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .modal-body {
@@ -656,17 +746,17 @@ export default {
 }
 
 .modal-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #dee2e6;
+    padding: 1.5rem;
+    border-top: 1px solid #e9ecef;
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 1rem;
     position: sticky;
     bottom: 0;
     background: white;
 }
 
-/* Form Styles */
+/* Form */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -679,31 +769,26 @@ export default {
 
 .form-control {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--primary, #4361ee);
-    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    border-color: #4361ee;
 }
 
-.form-control:disabled {
-    background-color: #e9ecef;
-    cursor: not-allowed;
-}
-
-textarea.form-control {
-    resize: vertical;
-    min-height: 150px;
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
 }
 
 .text-muted {
-    color: var(--gray, #6c757d);
+    color: #6c757d;
     font-size: 0.85rem;
     margin-top: 0.25rem;
     display: block;
@@ -711,153 +796,88 @@ textarea.form-control {
 
 .text-danger {
     color: #dc3545;
-    font-size: 0.875rem;
-}
-
-/* Button Styles */
-.btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.btn-primary {
-    background-color: var(--primary, #4361ee);
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: var(--secondary, #3a0ca3);
-}
-
-.btn-secondary {
-    background-color: var(--gray, #6c757d);
-    color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background-color: #5a6268;
-}
-
-.btn-danger {
-    background-color: #dc3545;
-    color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background-color: #c82333;
-}
-
-.btn-edit {
-    background-color: #28a745;
-    color: white;
-}
-
-.btn-edit:hover:not(:disabled) {
-    background-color: #218838;
-}
-
-.btn-small {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.85rem;
-}
-
-/* Pagination Styles */
-.pagination-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 2rem;
-}
-
-.pagination {
-    display: flex;
-    gap: 0.25rem;
-    list-style: none;
-    padding: 0;
-}
-
-.page-item {
-    margin: 0;
-}
-
-.page-item.active .page-link {
-    background-color: var(--primary, #4361ee);
-    color: white;
-    border-color: var(--primary, #4361ee);
-}
-
-.page-item.disabled .page-link {
-    color: var(--gray, #6c757d);
-    pointer-events: none;
-    cursor: not-allowed;
-    background-color: #fff;
-    border-color: #dee2e6;
-}
-
-.page-link {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    color: var(--primary, #4361ee);
-    text-decoration: none;
-    transition: all 0.2s;
-    display: block;
-}
-
-.page-link:hover:not(.disabled .page-link) {
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-}
-
-/* Loading Spinner */
-.spinner-border {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    vertical-align: text-bottom;
-    border: 0.2em solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: spinner-border .75s linear infinite;
-}
-
-@keyframes spinner-border {
-    to { transform: rotate(360deg); }
 }
 
 .text-center {
     text-align: center;
 }
 
-.py-5 {
-    padding-top: 3rem;
-    padding-bottom: 3rem;
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
 }
 
-.mt-4 {
-    margin-top: 1.5rem;
+.btn-primary {
+    background: #4361ee;
+    color: white;
 }
 
-.me-2 {
-    margin-right: 0.5rem;
+.btn-primary:hover {
+    background: #3451d1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
 }
 
-.mt-1 {
-    margin-top: 0.25rem;
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+/* Delete Modal */
+.delete-icon {
+    margin-bottom: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .notes-manager {
+        padding: 1rem;
+    }
+    
+    .module-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .notes-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

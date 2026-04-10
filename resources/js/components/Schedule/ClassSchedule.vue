@@ -8,19 +8,14 @@
                 </h2>
                 <div class="schedule-summary">
                     <div class="summary-item" @click="setFilter('all')" :class="{ active: currentFilter === 'all' }">
-                        <i class="fas fa-book summary-icon"></i>
+                        <i class="fas fa-book"></i>
                         <span class="summary-label">Total Classes</span>
                         <span class="summary-value">{{ classes.length }}</span>
                     </div>
                     <div class="summary-item" @click="setFilter('today')" :class="{ active: currentFilter === 'today' }">
-                        <i class="fas fa-sun summary-icon today-icon"></i>
+                        <i class="fas fa-sun"></i>
                         <span class="summary-label">Today</span>
                         <span class="summary-value">{{ getTodayClassesCount }}</span>
-                    </div>
-                    <div class="summary-item" @click="setFilter('upcoming')" :class="{ active: currentFilter === 'upcoming' }">
-                        <i class="fas fa-clock summary-icon upcoming-icon"></i>
-                        <span class="summary-label">Upcoming</span>
-                        <span class="summary-value">{{ getUpcomingClassesCount }}</span>
                     </div>
                 </div>
             </div>
@@ -29,7 +24,7 @@
             </button>
         </div>
 
-        <!-- Quick Actions Bar -->
+        <!-- Quick Actions -->
         <div class="quick-actions">
             <div class="search-box">
                 <i class="fas fa-search"></i>
@@ -43,7 +38,6 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <div class="sort-options">
                 <select v-model="sortBy" class="sort-select">
                     <option value="day">Sort by Day</option>
@@ -82,10 +76,7 @@
                 v-for="day in weekDays" 
                 :key="day.name"
                 class="day-column"
-                :class="{
-                    'today': day.isToday,
-                    'weekend': day.isWeekend
-                }"
+                :class="{ 'today': day.isToday, 'weekend': day.isWeekend }"
             >
                 <div class="day-header">
                     <div class="day-name">{{ day.name }}</div>
@@ -100,7 +91,7 @@
                         v-for="classItem in getClassesForDay(day.name)" 
                         :key="classItem.id"
                         class="class-card"
-                        :style="{ borderLeftColor: getSolidColor(classItem.color) }"
+                        :style="{ borderLeftColor: classItem.color }"
                         @click="openEditModal(classItem)"
                     >
                         <div class="class-time">
@@ -113,10 +104,10 @@
                             <span>{{ classItem.location }}</span>
                         </div>
                         <div class="class-actions" @click.stop>
-                            <button class="icon-btn edit-btn" @click="openEditModal(classItem)" title="Edit">
+                            <button class="icon-btn edit-btn" @click="openEditModal(classItem)">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="icon-btn delete-btn" @click="deleteClass(classItem)" title="Delete">
+                            <button class="icon-btn delete-btn" @click="deleteClass(classItem)">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -130,7 +121,7 @@
             </div>
         </div>
 
-        <!-- Add/Edit Class Modal -->
+        <!-- Add/Edit Modal -->
         <div v-if="showModal" class="modal-overlay" @click="closeModal">
             <div class="modal-container" @click.stop>
                 <div class="modal-header">
@@ -147,10 +138,7 @@
                     <form @submit.prevent="saveClass">
                         <!-- Class Name -->
                         <div class="form-group">
-                            <label>
-                                <i class="fas fa-heading"></i>
-                                Class Name <span class="text-danger">*</span>
-                            </label>
+                            <label>Class Name <span class="text-danger">*</span></label>
                             <input 
                                 type="text" 
                                 class="form-control" 
@@ -172,10 +160,7 @@
 
                         <!-- Time -->
                         <div class="form-group">
-                            <label>
-                                <i class="fas fa-clock"></i>
-                                Time <span class="text-danger">*</span>
-                            </label>
+                            <label>Time <span class="text-danger">*</span></label>
                             <div class="time-input-group">
                                 <input 
                                     type="text" 
@@ -199,10 +184,7 @@
 
                         <!-- Location -->
                         <div class="form-group">
-                            <label>
-                                <i class="fas fa-map-marker-alt"></i>
-                                Location <span class="text-danger">*</span>
-                            </label>
+                            <label>Location <span class="text-danger">*</span></label>
                             <input 
                                 type="text" 
                                 class="form-control" 
@@ -216,10 +198,7 @@
 
                         <!-- Day -->
                         <div class="form-group">
-                            <label>
-                                <i class="fas fa-calendar-day"></i>
-                                Day <span class="text-danger">*</span>
-                            </label>
+                            <label>Day <span class="text-danger">*</span></label>
                             <div class="day-selector">
                                 <button 
                                     v-for="day in daysOfWeek" 
@@ -235,12 +214,9 @@
                             <div v-if="errors.day" class="error-message">{{ errors.day[0] }}</div>
                         </div>
 
-                        <!-- Color Picker - Vibrant Solid Colors -->
+                        <!-- Color Picker -->
                         <div class="form-group">
-                            <label>
-                                <i class="fas fa-palette"></i>
-                                Color
-                            </label>
+                            <label>Color</label>
                             <div class="color-picker-container">
                                 <input 
                                     type="color" 
@@ -259,7 +235,6 @@
                                 >
                             </div>
                             
-                            <!-- Vibrant Color Palette -->
                             <div class="color-palette">
                                 <div 
                                     v-for="color in vibrantColors" 
@@ -291,25 +266,12 @@
                         @click="deleteClassFromModal"
                         :disabled="deleting"
                     >
-                        <i class="fas fa-trash"></i>
-                        {{ deleting ? 'Deleting...' : 'Delete Class' }}
+                        <i class="fas fa-trash"></i> Delete
                     </button>
-                    
-                    <button 
-                        type="button" 
-                        class="btn btn-secondary" 
-                        @click="closeModal"
-                        :disabled="saving || deleting"
-                    >
+                    <button type="button" class="btn btn-secondary" @click="closeModal">
                         Cancel
                     </button>
-                    
-                    <button 
-                        type="button" 
-                        class="btn btn-primary" 
-                        @click="saveClass"
-                        :disabled="saving || deleting"
-                    >
+                    <button type="button" class="btn btn-primary" @click="saveClass" :disabled="saving">
                         <i :class="saving ? 'fas fa-spinner fa-spin' : (modalMode === 'add' ? 'fas fa-plus' : 'fas fa-save')"></i>
                         {{ saving ? 'Saving...' : (modalMode === 'add' ? 'Add Class' : 'Update Class') }}
                     </button>
@@ -321,13 +283,8 @@
         <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
             <div class="modal-container modal-sm" @click.stop>
                 <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle text-danger"></i>
-                        Delete Class
-                    </h5>
-                    <button type="button" class="btn-close" @click="closeDeleteModal">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <h5 class="modal-title">Delete Class</h5>
+                    <button type="button" class="btn-close" @click="closeDeleteModal">×</button>
                 </div>
                 <div class="modal-body text-center">
                     <div class="delete-icon">
@@ -359,21 +316,10 @@ import _ from 'lodash';
 export default {
     name: 'ClassSchedule',
     
-    props: {
-        initialClasses: {
-            type: Array,
-            default: () => []
-        },
-        initialUniqueNames: {
-            type: Array,
-            default: () => []
-        }
-    },
-
     data() {
         return {
-            classes: this.initialClasses,
-            uniqueClassNames: this.initialUniqueNames,
+            classes: [],
+            uniqueClassNames: [],
             searchQuery: '',
             currentFilter: 'all',
             sortBy: 'day',
@@ -393,7 +339,7 @@ export default {
                 time: '',
                 location: '',
                 day: 'Monday',
-                color: '#4361ee',
+                color: '',
                 hexColor: '#4361ee'
             },
             
@@ -408,28 +354,11 @@ export default {
                 { value: 'Saturday', label: 'Sat' }
             ],
             
-            // Vibrant solid colors - all hex values
             vibrantColors: [
-                '#4361ee', // Royal Blue
-                '#3a0ca3', // Deep Purple
-                '#7209b7', // Violet
-                '#f72585', // Hot Pink
-                '#e63946', // Red
-                '#2a9d8f', // Teal
-                '#e9c46a', // Gold
-                '#f4a261', // Orange
-                '#e76f51', // Coral
-                '#4cc9f0', // Light Blue
-                '#06d6a0', // Emerald
-                '#118ab2', // Ocean Blue
-                '#ef476f', // Pink
-                '#ffd166', // Yellow
-                '#8338ec', // Purple
-                '#3b82f6', // Bright Blue
-                '#10b981', // Green
-                '#f59e0b', // Amber
-                '#ef4444', // Bright Red
-                '#8b5cf6'  // Violet
+                '#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#e63946',
+                '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51', '#4cc9f0',
+                '#06d6a0', '#118ab2', '#ef476f', '#ffd166', '#8338ec',
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
             ],
             
             searchTimeout: null
@@ -441,7 +370,6 @@ export default {
             const map = {};
             this.classes.forEach(cls => {
                 if (!map[cls.name]) {
-                    // Store the solid color, not faded
                     map[cls.name] = this.getSolidColor(cls.color);
                 }
             });
@@ -451,17 +379,6 @@ export default {
         getTodayClassesCount() {
             const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
             return this.classes.filter(c => c.day === today).length;
-        },
-        
-        getUpcomingClassesCount() {
-            const today = new Date();
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const todayIndex = days.indexOf(today.toLocaleDateString('en-US', { weekday: 'long' }));
-            
-            return this.classes.filter(c => {
-                const classIndex = days.indexOf(c.day);
-                return classIndex > todayIndex && classIndex <= todayIndex + 3;
-            }).length;
         },
         
         weekDays() {
@@ -489,7 +406,6 @@ export default {
                     fullDate: date
                 });
             }
-            
             return weekDays;
         },
         
@@ -515,21 +431,12 @@ export default {
             if (this.currentFilter === 'today') {
                 const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
                 filtered = filtered.filter(cls => cls.day === today);
-            } else if (this.currentFilter === 'upcoming') {
-                const today = new Date();
-                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                const todayIndex = days.indexOf(today.toLocaleDateString('en-US', { weekday: 'long' }));
-                filtered = filtered.filter(cls => {
-                    const classIndex = days.indexOf(cls.day);
-                    return classIndex > todayIndex && classIndex <= todayIndex + 3;
-                });
             }
             
             const daysOrder = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5 };
             
             return filtered.sort((a, b) => {
                 let comparison = 0;
-                
                 if (this.sortBy === 'day') {
                     comparison = daysOrder[a.day] - daysOrder[b.day];
                 } else if (this.sortBy === 'time') {
@@ -537,36 +444,44 @@ export default {
                 } else if (this.sortBy === 'name') {
                     comparison = a.name.localeCompare(b.name);
                 }
-                
                 return this.sortDirection === 'asc' ? comparison : -comparison;
             });
         }
     },
 
     mounted() {
-        console.log('ClassSchedule mounted');
+        console.log('ClassSchedule mounted - fetching classes...');
+        this.fetchClasses();
         this.debouncedSearch = _.debounce(this.applySearch, 300);
         this.setDefaultDay();
-        
-        // Convert any existing faded colors to solid on load
-        this.classes.forEach(classItem => {
-            if (classItem.color && classItem.color.includes('rgba')) {
-                classItem.color = this.getSolidColor(classItem.color);
-            }
-        });
     },
 
     methods: {
-        // Convert rgba to hex
+        // ========== DATA FETCHING ==========
+        async fetchClasses() {
+            this.loading = true;
+            try {
+                const response = await axios.get('/schedule');
+                console.log('Classes fetched:', response.data);
+                this.classes = response.data;
+                
+                // Update unique class names for suggestions
+                const names = new Set();
+                this.classes.forEach(cls => names.add(cls.name));
+                this.uniqueClassNames = Array.from(names).sort();
+                
+            } catch (error) {
+                console.error('Failed to fetch classes:', error);
+                this.showNotification('Failed to load classes.', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        // ========== HELPER METHODS ==========
         getSolidColor(color) {
             if (!color) return '#4361ee';
-            
-            // If it's already a hex color, return it
-            if (color.startsWith('#')) {
-                return color;
-            }
-            
-            // If it's rgba, extract RGB and convert to hex
+            if (color.startsWith('#')) return color;
             if (color.startsWith('rgba')) {
                 const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
                 if (match) {
@@ -576,7 +491,6 @@ export default {
                     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
                 }
             }
-            
             return '#4361ee';
         },
         
@@ -595,13 +509,8 @@ export default {
             }
         },
         
-        previousWeek() {
-            this.currentWeekOffset--;
-        },
-        
-        nextWeek() {
-            this.currentWeekOffset++;
-        },
+        previousWeek() { this.currentWeekOffset--; },
+        nextWeek() { this.currentWeekOffset++; },
         
         formatCurrentTime() {
             const now = new Date();
@@ -610,18 +519,16 @@ export default {
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12 || 12;
             const endHour = (now.getHours() + 1) % 24 || 12;
-            const endAmpm = endHour >= 12 ? 'PM' : 'AM';
-            
-            return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm} - ${endHour}:${minutes.toString().padStart(2, '0')} ${endAmpm}`;
+            return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm} - ${endHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
         },
         
         setCurrentTime() {
             this.form.time = this.formatCurrentTime();
         },
         
+        // ========== COLOR HANDLING ==========
         onClassNameInput() {
             const className = this.form.name.trim();
-            
             if (className && this.classColorMap[className]) {
                 const existingColor = this.classColorMap[className];
                 this.form.color = existingColor;
@@ -639,7 +546,6 @@ export default {
         
         onClassNameChange() {
             const className = this.form.name.trim();
-            
             if (className && this.classColorMap[className]) {
                 const existingColor = this.classColorMap[className];
                 this.form.color = existingColor;
@@ -656,17 +562,14 @@ export default {
             this.form.color = hexColor;
         },
         
+        // ========== SEARCH & SORT ==========
         applySearch() {},
-        
-        clearSearch() {
-            this.searchQuery = '';
-            this.applySearch();
-        },
-        
+        clearSearch() { this.searchQuery = ''; },
         toggleSortDirection() {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
         },
         
+        // ========== MODAL METHODS ==========
         openAddModal() {
             this.modalMode = 'add';
             this.form = {
@@ -688,9 +591,7 @@ export default {
             this.showModal = true;
             document.body.style.overflow = 'hidden';
             
-            // Convert color to solid if needed
             const solidColor = this.getSolidColor(classItem.color);
-            
             this.form = {
                 id: classItem.id,
                 name: classItem.name,
@@ -700,7 +601,6 @@ export default {
                 color: solidColor,
                 hexColor: solidColor
             };
-            
             this.errors = {};
         },
         
@@ -710,6 +610,7 @@ export default {
             document.body.style.overflow = '';
         },
         
+        // ========== CRUD OPERATIONS ==========
         async saveClass() {
             this.saving = true;
             this.errors = {};
@@ -720,19 +621,16 @@ export default {
                     this.saving = false;
                     return;
                 }
-                
                 if (!this.form.time.trim()) {
                     this.errors.time = ['Time is required.'];
                     this.saving = false;
                     return;
                 }
-                
                 if (!this.form.location.trim()) {
                     this.errors.location = ['Location is required.'];
                     this.saving = false;
                     return;
                 }
-                
                 if (!this.form.color.trim()) {
                     this.errors.color = ['Please select a color for the class.'];
                     this.saving = false;
@@ -747,16 +645,17 @@ export default {
                     color: this.form.color
                 };
                 
+                console.log('Saving class:', formData);
+                
                 let response;
                 if (this.modalMode === 'add') {
                     response = await axios.post('/schedule', formData);
-                    // Ensure color is stored as hex
-                    response.data.color = this.getSolidColor(response.data.color);
+                    console.log('Class created:', response.data);
                     this.classes.push(response.data);
                     this.showNotification('Class added successfully!', 'success');
                 } else {
                     response = await axios.put(`/schedule/${this.form.id}`, formData);
-                    response.data.color = this.getSolidColor(response.data.color);
+                    console.log('Class updated:', response.data);
                     const index = this.classes.findIndex(c => c.id === this.form.id);
                     if (index !== -1) {
                         this.classes.splice(index, 1, response.data);
@@ -764,10 +663,15 @@ export default {
                     this.showNotification('Class updated successfully!', 'success');
                 }
                 
-                this.updateUniqueNames();
+                // Update unique class names
+                const names = new Set();
+                this.classes.forEach(cls => names.add(cls.name));
+                this.uniqueClassNames = Array.from(names).sort();
+                
                 this.closeModal();
                 
             } catch (error) {
+                console.error('Save failed:', error);
                 if (error.response && error.response.status === 422) {
                     this.errors = error.response.data.errors;
                 } else {
@@ -779,22 +683,14 @@ export default {
         },
         
         deleteClass(classItem) {
-            this.classToDelete = {
-                id: classItem.id,
-                name: classItem.name
-            };
+            this.classToDelete = { id: classItem.id, name: classItem.name };
             this.showDeleteModal = true;
             document.body.style.overflow = 'hidden';
         },
         
         deleteClassFromModal() {
             if (!this.form || !this.form.id) return;
-            
-            this.classToDelete = {
-                id: this.form.id,
-                name: this.form.name
-            };
-            
+            this.classToDelete = { id: this.form.id, name: this.form.name };
             this.closeModal();
             this.showDeleteModal = true;
             document.body.style.overflow = 'hidden';
@@ -809,31 +705,21 @@ export default {
         
         async confirmDelete() {
             if (!this.classToDelete || !this.classToDelete.id) return;
-            
             this.deleting = true;
             
             try {
                 await axios.delete(`/schedule/${this.classToDelete.id}`);
-                
                 const index = this.classes.findIndex(c => c.id === this.classToDelete.id);
                 if (index !== -1) {
                     this.classes.splice(index, 1);
                 }
-                
-                this.updateUniqueNames();
                 this.showNotification('Class deleted successfully!', 'success');
                 this.closeDeleteModal();
-                
             } catch (error) {
+                console.error('Delete failed:', error);
                 this.showNotification('Failed to delete class. Please try again.', 'error');
                 this.deleting = false;
             }
-        },
-        
-        updateUniqueNames() {
-            const names = new Set();
-            this.classes.forEach(cls => names.add(cls.name));
-            this.uniqueClassNames = Array.from(names).sort();
         },
         
         showNotification(message, type = 'info') {
@@ -852,7 +738,7 @@ export default {
     min-height: 100vh;
 }
 
-/* Header Styles */
+/* ========== HEADER ========== */
 .module-header {
     display: flex;
     justify-content: space-between;
@@ -868,14 +754,19 @@ export default {
 
 .module-title {
     font-size: 2rem;
-    color: var(--primary, #4361ee);
+    color: #4361ee;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
 
-/* Summary Cards */
+.module-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* ========== SUMMARY CARDS (FILTERS) ========== */
 .schedule-summary {
     display: flex;
     gap: 1rem;
@@ -892,15 +783,18 @@ export default {
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s;
+    color: #1e293b;
 }
 
 .summary-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: #e9ecef;
 }
 
+/* Active state - makes text white */
 .summary-item.active {
-    background: var(--primary, #5d5d5e);
+    background: #4361ee;
 }
 
 .summary-item.active .summary-icon,
@@ -909,9 +803,14 @@ export default {
     color: white;
 }
 
+/* Icon colors when not active */
 .summary-icon {
     font-size: 1rem;
-    color: #1380e0;
+    transition: color 0.2s;
+}
+
+.summary-icon.class {
+    color: #17a2b8;
 }
 
 .summary-icon.today-icon {
@@ -922,6 +821,7 @@ export default {
     color: #f72585;
 }
 
+/* When active, icons become white */
 .summary-item.active .summary-icon {
     color: white;
 }
@@ -929,15 +829,17 @@ export default {
 .summary-label {
     font-size: 0.9rem;
     color: #6c757d;
+    transition: color 0.2s;
 }
 
 .summary-value {
     font-weight: 600;
     font-size: 1.1rem;
     color: #212529;
+    transition: color 0.2s;
 }
 
-/* Quick Actions */
+/* ========== QUICK ACTIONS ========== */
 .quick-actions {
     display: flex;
     justify-content: space-between;
@@ -956,11 +858,17 @@ export default {
     padding: 0.5rem 1rem;
     flex: 1;
     max-width: 400px;
+    transition: all 0.2s;
 }
 
 .search-box:focus-within {
     border-color: #4361ee;
     box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.search-box i {
+    color: #6c757d;
+    margin-right: 0.5rem;
 }
 
 .search-box input {
@@ -974,9 +882,12 @@ export default {
 .clear-search {
     background: none;
     border: none;
+    color: #6c757d;
     cursor: pointer;
     padding: 0.25rem;
-    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .clear-search:hover {
@@ -997,6 +908,12 @@ export default {
     font-size: 0.9rem;
     cursor: pointer;
     outline: none;
+    transition: all 0.2s;
+}
+
+.sort-select:hover {
+    border-color: #4361ee;
+    transform: translateY(-1px);
 }
 
 .sort-direction {
@@ -1015,9 +932,10 @@ export default {
 .sort-direction:hover {
     background: #f8f9fa;
     color: #4361ee;
+    transform: translateY(-2px);
 }
 
-/* Week Navigation */
+/* ========== WEEK NAVIGATION ========== */
 .week-navigation {
     display: flex;
     justify-content: space-between;
@@ -1040,12 +958,15 @@ export default {
     gap: 0.5rem;
     transition: all 0.2s;
     color: #4361ee;
+    font-weight: 500;
 }
 
 .nav-btn:hover {
-    background: #636364;
+    background: #4361ee;
     color: white;
     border-color: #4361ee;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.2);
 }
 
 .current-week {
@@ -1056,7 +977,11 @@ export default {
     color: #1e293b;
 }
 
-/* Week Grid */
+.current-week i {
+    color: #4361ee;
+}
+
+/* ========== WEEK GRID ========== */
 .week-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -1071,12 +996,14 @@ export default {
     background: white;
     border-right: 1px solid #f1f5f9;
     min-height: 500px;
+    transition: all 0.2s;
 }
 
 .day-column:last-child {
     border-right: none;
 }
 
+/* Today's column */
 .day-column.today {
     background: linear-gradient(135deg, #fff9e6, #fff5e6);
     position: relative;
@@ -1097,12 +1024,17 @@ export default {
     font-weight: 700;
 }
 
+.day-column.today .day-date {
+    color: #e63946;
+}
+
+/* Weekend column */
 .day-column.weekend {
     background: #faf9fe;
 }
 
-.day-column.weekend.today {
-    background: linear-gradient(135deg, #fff9e6, #fff5e6);
+.day-column.weekend .day-name {
+    color: #64748b;
 }
 
 .day-header {
@@ -1144,7 +1076,7 @@ export default {
     gap: 0.75rem;
 }
 
-/* Class Card - Solid Color Border */
+/* ========== CLASS CARD ========== */
 .class-card {
     background: white;
     border-radius: 12px;
@@ -1159,6 +1091,7 @@ export default {
 .class-card:hover {
     transform: translateX(4px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: #fefefe;
 }
 
 .class-time {
@@ -1170,11 +1103,16 @@ export default {
     margin-bottom: 0.3rem;
 }
 
+.class-time i {
+    font-size: 0.7rem;
+}
+
 .class-name {
     font-weight: 600;
     color: #1e293b;
     margin-bottom: 0.3rem;
     font-size: 0.9rem;
+    line-height: 1.3;
 }
 
 .class-location {
@@ -1183,6 +1121,10 @@ export default {
     display: flex;
     align-items: center;
     gap: 0.3rem;
+}
+
+.class-location i {
+    font-size: 0.7rem;
 }
 
 .class-actions {
@@ -1240,7 +1182,12 @@ export default {
     color: #cbd5e1;
 }
 
-/* Loading State */
+.empty-day p {
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+/* ========== LOADING STATE ========== */
 .loading-state {
     text-align: center;
     padding: 4rem;
@@ -1257,10 +1204,12 @@ export default {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-/* Modal Styles */
+/* ========== MODAL ========== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -1273,6 +1222,16 @@ export default {
     justify-content: center;
     z-index: 1050;
     backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .modal-container {
@@ -1283,6 +1242,22 @@ export default {
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-container.modal-sm {
+    max-width: 400px;
 }
 
 .modal-header {
@@ -1295,6 +1270,7 @@ export default {
     top: 0;
     background: white;
     z-index: 1;
+    border-radius: 20px 20px 0 0;
 }
 
 .modal-title {
@@ -1303,6 +1279,7 @@ export default {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: #1e293b;
 }
 
 .btn-close {
@@ -1317,11 +1294,13 @@ export default {
     justify-content: center;
     border-radius: 50%;
     transition: all 0.2s;
+    color: #64748b;
 }
 
 .btn-close:hover {
     background: #f1f5f9;
     color: #dc3545;
+    transform: rotate(90deg);
 }
 
 .modal-body {
@@ -1337,9 +1316,10 @@ export default {
     position: sticky;
     bottom: 0;
     background: white;
+    border-radius: 0 0 20px 20px;
 }
 
-/* Form Styles */
+/* ========== FORM ========== */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -1361,12 +1341,19 @@ export default {
     border-radius: 12px;
     font-size: 0.95rem;
     transition: all 0.2s;
+    background: white;
 }
 
 .form-control:focus {
     outline: none;
     border-color: #4361ee;
     box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-control:disabled {
+    background: #f8f9fa;
+    cursor: not-allowed;
 }
 
 .error-message {
@@ -1382,6 +1369,10 @@ export default {
     align-items: center;
 }
 
+.time-input-group .form-control {
+    flex: 1;
+}
+
 .btn-time {
     padding: 0.75rem 1rem;
     background: #f8f9fa;
@@ -1392,12 +1383,15 @@ export default {
     align-items: center;
     gap: 0.5rem;
     transition: all 0.2s;
+    font-weight: 500;
+    color: #4361ee;
 }
 
 .btn-time:hover {
     background: #4361ee;
     color: white;
     border-color: #4361ee;
+    transform: translateY(-2px);
 }
 
 /* Day Selector */
@@ -1417,17 +1411,22 @@ export default {
     text-align: center;
     font-weight: 500;
     transition: all 0.2s;
+    color: #475569;
 }
 
 .day-option:hover {
     background: #f8f9fa;
     transform: translateY(-2px);
+    border-color: #4361ee;
+    color: #4361ee;
 }
 
 .day-option.active {
     background: #4361ee;
     color: white;
     border-color: #4361ee;
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
 }
 
 /* Color Picker */
@@ -1445,6 +1444,12 @@ export default {
     border-radius: 12px;
     cursor: pointer;
     padding: 0;
+    transition: all 0.2s;
+}
+
+.color-picker:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .color-palette {
@@ -1474,6 +1479,7 @@ export default {
 .color-swatch.active {
     border-color: #1e293b;
     box-shadow: 0 0 0 2px white, 0 0 0 4px #1e293b;
+    transform: scale(1.05);
 }
 
 .text-muted {
@@ -1483,7 +1489,7 @@ export default {
     margin-top: 0.25rem;
 }
 
-/* Buttons */
+/* ========== BUTTONS ========== */
 .btn {
     padding: 0.75rem 1.5rem;
     border: none;
@@ -1500,6 +1506,7 @@ export default {
 .btn-primary {
     background: #4361ee;
     color: white;
+    box-shadow: 0 2px 4px rgba(67, 97, 238, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1515,30 +1522,40 @@ export default {
 
 .btn-secondary:hover:not(:disabled) {
     background: #e2e8f0;
+    transform: translateY(-2px);
 }
 
 .btn-danger {
     background: #dc3545;
     color: white;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
 }
 
 .btn-danger:hover:not(:disabled) {
     background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
 }
 
-/* Delete Modal */
+/* ========== DELETE MODAL ========== */
 .delete-icon {
     margin-bottom: 1rem;
+}
+
+.delete-icon i {
+    color: #dc3545;
 }
 
 .delete-message {
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
+    color: #334155;
 }
 
 .text-danger {
@@ -1549,11 +1566,192 @@ export default {
     text-align: center;
 }
 
-/* Responsive */
+/* ========== DARK MODE ========== */
+.dark-mode .schedule-manager {
+    background: #0f172a;
+}
+
+.dark-mode .summary-item {
+    background: #0f3460;
+    color: #e4e6eb;
+}
+
+.dark-mode .summary-item:hover {
+    background: #1a4a6f;
+}
+
+.dark-mode .summary-item.active {
+    background: #4361ee;
+}
+
+.dark-mode .summary-item.active .summary-icon,
+.dark-mode .summary-item.active .summary-label,
+.dark-mode .summary-item.active .summary-value {
+    color: white;
+}
+
+.dark-mode .summary-icon.class {
+    color: #4cc9f0;
+}
+
+.dark-mode .summary-icon.today-icon {
+    color: #f72585;
+}
+
+.dark-mode .summary-icon.upcoming-icon {
+    color: #e63946;
+}
+
+.dark-mode .summary-label {
+    color: #94a3b8;
+}
+
+.dark-mode .summary-value {
+    color: #e4e6eb;
+}
+
+.dark-mode .search-box {
+    background: #0f3460;
+    border-color: #1a4a6f;
+}
+
+.dark-mode .search-box input {
+    color: #e4e6eb;
+}
+
+.dark-mode .sort-select,
+.dark-mode .sort-direction {
+    background: #0f3460;
+    border-color: #1a4a6f;
+    color: #e4e6eb;
+}
+
+.dark-mode .sort-select:hover,
+.dark-mode .sort-direction:hover {
+    background: #1a4a6f;
+}
+
+.dark-mode .week-navigation {
+    background: #16213e;
+}
+
+.dark-mode .nav-btn {
+    background: #0f3460;
+    border-color: #1a4a6f;
+    color: #4361ee;
+}
+
+.dark-mode .nav-btn:hover {
+    background: #4361ee;
+    color: white;
+}
+
+.dark-mode .current-week {
+    color: #e4e6eb;
+}
+
+.dark-mode .day-column {
+    background: #16213e;
+    border-right-color: #0f3460;
+}
+
+.dark-mode .day-column.today {
+    background: linear-gradient(135deg, #2d2a1a, #2a2a1a);
+}
+
+.dark-mode .day-name {
+    color: #e4e6eb;
+}
+
+.dark-mode .day-date {
+    color: #94a3b8;
+}
+
+.dark-mode .class-card {
+    background: #0f3460;
+    border-left-color: #4361ee;
+}
+
+.dark-mode .class-card:hover {
+    background: #1a4a6f;
+}
+
+.dark-mode .class-name {
+    color: #e4e6eb;
+}
+
+.dark-mode .class-time,
+.dark-mode .class-location {
+    color: #94a3b8;
+}
+
+.dark-mode .icon-btn {
+    background: #0f3460;
+    color: #e4e6eb;
+}
+
+.dark-mode .icon-btn:hover {
+    background: #4361ee;
+    color: white;
+}
+
+.dark-mode .modal-container {
+    background: #16213e;
+}
+
+.dark-mode .modal-header,
+.dark-mode .modal-footer {
+    background: #16213e;
+    border-color: #0f3460;
+}
+
+.dark-mode .modal-title {
+    color: #e4e6eb;
+}
+
+.dark-mode .form-group label {
+    color: #e4e6eb;
+}
+
+.dark-mode .form-control {
+    background: #0f3460;
+    border-color: #1a4a6f;
+    color: #e4e6eb;
+}
+
+.dark-mode .form-control:focus {
+    background: #1a4a6f;
+}
+
+.dark-mode .day-option {
+    background: #0f3460;
+    border-color: #1a4a6f;
+    color: #e4e6eb;
+}
+
+.dark-mode .day-option:hover {
+    background: #1a4a6f;
+}
+
+.dark-mode .day-option.active {
+    background: #4361ee;
+    color: white;
+}
+
+.dark-mode .color-palette {
+    background: #0f3460;
+}
+
+.dark-mode .text-muted {
+    color: #94a3b8;
+}
+
+/* ========== RESPONSIVE ========== */
 @media (max-width: 1024px) {
     .week-grid {
         overflow-x: auto;
     }
+
     .day-column {
         min-width: 200px;
     }
@@ -1563,27 +1761,73 @@ export default {
     .schedule-manager {
         padding: 1rem;
     }
-    
+
     .quick-actions {
         flex-direction: column;
     }
-    
+
     .search-box {
         max-width: 100%;
     }
-    
+
     .week-navigation {
         flex-direction: column;
         gap: 0.5rem;
+        border-radius: 20px;
+        text-align: center;
     }
-    
+
+    .day-selector {
+        flex-wrap: wrap;
+    }
+
+    .day-option {
+        min-width: 60px;
+    }
+
     .modal-footer {
         flex-direction: column;
+        gap: 0.75rem;
     }
-    
+
     .modal-footer .btn {
         width: 100%;
         justify-content: center;
+    }
+
+    .color-palette {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .module-title {
+        font-size: 1.5rem;
+    }
+
+    .schedule-summary {
+        gap: 0.5rem;
+    }
+
+    .summary-item {
+        padding: 0.4rem 0.8rem;
+    }
+
+    .summary-value {
+        font-size: 1rem;
+    }
+
+    .day-option {
+        padding: 0.4rem;
+        font-size: 0.85rem;
+    }
+
+    .class-card {
+        padding: 0.65rem;
+    }
+
+    .class-name {
+        font-size: 0.85rem;
     }
 }
 </style>

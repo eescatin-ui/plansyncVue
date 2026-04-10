@@ -2,28 +2,31 @@
 
 namespace App\Http\Middleware;
 
-use Closure;
+use Illuminate\Auth\Middleware\Authenticate as Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\Response;
 
-class Authenticate
+class Authenticate extends Middleware
 {
     /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * Get the path the user should be redirected to when they are not authenticated.
      */
-    public function handle(Request $request, Closure $next, string ...$guards): Response
+    protected function redirectTo(Request $request): ?string
     {
-        $guards = empty($guards) ? [null] : $guards;
-
-        foreach ($guards as $guard) {
-            if (Auth::guard($guard)->check()) {
-                return $next($request);
+        // Check if it's an admin route
+        if ($request->is('admin/*') || $request->is('admin')) {
+            // For API requests, return null (will return 401)
+            if ($request->expectsJson()) {
+                return null;
             }
+            // For web requests, redirect to the Vue SPA admin login page
+            return '/admin/login';
         }
-
-        return redirect()->route('login');
+        
+        // For user routes
+        if (!$request->expectsJson()) {
+            return '/login';
+        }
+        
+        return null;
     }
 }

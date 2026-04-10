@@ -16,38 +16,45 @@ class Task extends Model
         'due_date',
         'status',
         'priority',
+        'category',
     ];
 
     protected $casts = [
         'due_date' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
+    // Relationship with User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // Relationship with Reminders
     public function reminders()
     {
         return $this->hasMany(Reminder::class);
     }
-    
-    // Add scope for filtering if needed
-    public function scopeStatus($query, $status)
+
+    // Scopes for filtering
+    public function scopeTodo($query)
     {
-        return $query->where('status', $status);
+        return $query->where('status', 'todo');
     }
-    
-    public function scopeUserTasks($query, $userId)
+
+    public function scopeInProgress($query)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('status', 'inprogress');
     }
-    
-    public function scopeSearch($query, $search)
+
+    public function scopeDone($query)
     {
-        return $query->where(function($q) use ($search) {
-            $q->where('title', 'like', "%{$search}%")
-              ->orWhere('description', 'like', "%{$search}%");
-        });
+        return $query->where('status', 'done');
+    }
+
+    public function scopeOverdue($query)
+    {
+        return $query->where('due_date', '<', now())->where('status', '!=', 'done');
     }
 }

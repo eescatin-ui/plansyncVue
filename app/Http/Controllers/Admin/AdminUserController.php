@@ -4,167 +4,201 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\ClassSchedule;
-use App\Models\Task;
-use App\Models\Note;
-use App\Models\Reminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class AdminUserController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = User::where('is_admin', false)
-                    ->withCount(['classSchedules', 'tasks', 'notes', 'reminders']);
-        
-        // Search functionality
-        if ($request->has('q')) {
-            $search = $request->q;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-        
-        $users = $query->orderBy('created_at', 'desc')->paginate(10);
-        
-        return view('admin.users.index', compact('users'));
-    }
-
-        /**
-     * Extract start time from time range
+    /**
+     * API: Get all users (same pattern as AdminClassController)
      */
-    private function extractStartTime($timeRange)
+    public function api(Request $request)
     {
-        if (!$timeRange) {
-            return null;
-        }
-        
-        // Handle time ranges like "9:00 PM - 10:00 PM"
-        $parts = explode('-', $timeRange);
-        if (count($parts) > 0) {
-            $startTime = trim($parts[0]);
+        try {
+            $query = User::query();
             
-            // Try to parse as time
-            try {
-                return Carbon::parse($startTime)->format('h:i A');
-            } catch (\Exception $e) {
-                // If parsing fails, return the original start time
-                return $startTime;
+            // Apply search filter
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
             }
+            
+            $users = $query->latest()->get();
+            
+            // Add counts for each user (same as ClassSchedule with user relation)
+            foreach ($users as $user) {
+                $user->tasks_count = $user->tasks()->count();
+                $user->notes_count = $user->notes()->count();
+                $user->class_schedules_count = $user->classSchedules()->count();
+                $user->reminders_count = $user->reminders()->count();
+            }
+            
+            // Get stats (similar to classes stats)
+            $stats = [
+                'totalUsers' => User::count(),
+                'newUsersThisMonth' => User::whereMonth('created_at', now()->month)->count(),
+                'activeUsers' => User::whereHas('tasks')->count(),
+            ];
+            
+            // Return same format as AdminClassController
+            return response()->json([
+                'users' => $users,
+                'stats' => $stats
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], 500);
         }
-        
-        return $timeRange;
     }
-
-    public function create()
+    
+    /**
+     * API: Get single user (same as show in AdminClassController)
+     */
+    public function show($id)
     {
-        return view('admin.users.create');
+        try {
+            $user = User::with(['tasks', 'notes', 'classSchedules', 'reminders'])->findOrFail($id);
+            
+            // Add counts
+            $user->tasks_count = $user->tasks->count();
+            $user->notes_count = $user->notes->count();
+            $user->class_schedules_count = $user->classSchedules->count();
+            $user->reminders_count = $user->reminders->count();
+            
+            return response()->json($user);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
     }
-
+    
+    /**
+     * API: Get list of users for dropdown (same as list in AdminClassController)
+     */
+    public function list()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * API: Get user statistics (same as stats in AdminClassController)
+     */
+    public function stats()
+    {
+        $stats = [
+            'totalUsers' => User::count(),
+            'newUsersThisMonth' => User::whereMonth('created_at', now()->month)->count(),
+            'activeUsers' => User::whereHas('tasks')->count(),
+        ];
+        
+        return response()->json($stats);
+    }
+    
+    /**
+     * API: Store new user (same as store in AdminClassController)
+     */
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email|unique:users',
             'password' => 'required|min:8|confirmed',
         ]);
 
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'is_admin' => false,
-        ]);
-
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User created successfully.');
-    }
-
-    public function show($id)
-    {
-        $user = User::where('is_admin', false)
-                    ->withCount(['classSchedules', 'tasks', 'notes', 'reminders'])
-                    ->with([
-                        'classSchedules' => function($q) {
-                            $q->latest()->limit(5);
-                        },
-                        'tasks' => function($q) {
-                            $q->latest()->limit(5);
-                        },
-                        'notes' => function($q) {
-                            $q->latest()->limit(5);
-                        },
-                        'reminders' => function($q) {
-                            $q->latest()->limit(5);
-                        }
-                    ])->findOrFail($id);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
         
-        // Get task statistics
-        $taskStats = DB::table('tasks')
-            ->select('status', DB::raw('count(*) as count'))
-            ->where('user_id', $id)
-            ->groupBy('status')
-            ->get();
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
             
-        // Get class schedules by day - FIXED: Using correct column name 'day'
-        $classByDay = DB::table('class_schedules')
-            ->select('day', DB::raw('count(*) as count'))
-            ->where('user_id', $id)
-            ->groupBy('day')
-            ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
-            ->get();
-        
-        return view('admin.users.show', compact('user', 'taskStats', 'classByDay'));
+            return response()->json([
+                'success' => true,
+                'message' => 'User created successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating user: ' . $e->getMessage()
+            ], 500);
+        }
     }
-
-    public function edit($id)
-    {
-        $user = User::where('is_admin', false)->findOrFail($id);
-        return view('admin.users.edit', compact('user'));
-    }
-
+    
+    /**
+     * API: Update user (same as update in AdminClassController)
+     */
     public function update(Request $request, $id)
     {
-        $user = User::where('is_admin', false)->findOrFail($id);
+        try {
+            $user = User::findOrFail($id);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
         
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
             'password' => 'nullable|min:8|confirmed',
         ]);
 
-        $data = [
-            'name' => $request->name,
-            'email' => $request->email,
-        ];
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
         }
-
-        $user->update($data);
-
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User updated successfully.');
+        
+        try {
+            $user->name = $request->name;
+            $user->email = $request->email;
+            
+            if (!empty($request->password)) {
+                $user->password = Hash::make($request->password);
+            }
+            
+            $user->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'User updated successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating user: ' . $e->getMessage()
+            ], 500);
+        }
     }
-
+    
+    /**
+     * API: Delete user (same as destroy in AdminClassController)
+     */
     public function destroy($id)
     {
-        $user = User::where('is_admin', false)->findOrFail($id);
-        
-        $user->delete();
-
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User deleted successfully.');
-    }
-
-    public function list()
-    {
-        $users = User::select('id', 'name')->where('is_admin', false)->get();
-        return response()->json($users);
+        try {
+            $user = User::findOrFail($id);
+            $userName = $user->name;
+            $user->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$userName}' deleted successfully"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting user: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

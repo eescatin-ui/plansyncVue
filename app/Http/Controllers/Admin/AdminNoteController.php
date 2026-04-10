@@ -6,17 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\Note;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class AdminNoteController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display the admin notes view (returns Vue SPA)
+     */
+    public function index()
     {
-        // Get all users for filter dropdown
-        $users = User::orderBy('name')->get();
-        
-        // Build notes query
-        $query = Note::with('user')->latest();
+        return view('app');
+    }
+    
+    /**
+     * API endpoint for fetching notes data (includes stats like AdminClasses)
+     */
+    public function api(Request $request)
+    {
+        $query = Note::with('user');
         
         // Apply filters
         if ($request->has('user_id') && $request->user_id) {
@@ -28,172 +36,231 @@ class AdminNoteController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('content', 'like', "%{$search}%")
-                  ->orWhereJsonContains('tags', $search)
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
+                  ->orWhere('tags', 'like', "%{$search}%");
             });
         }
         
-        // Filter by tag
-        if ($request->has('tag') && $request->tag) {
-            $tag = $request->tag;
-            $query->whereJsonContains('tags', $tag);
+        $perPage = $request->get('per_page', 10);
+        $notes = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        
+        // Ensure tags are decoded properly
+        foreach ($notes as $note) {
+            if (is_string($note->tags)) {
+                $note->tags = json_decode($note->tags, true) ?: [];
+            }
+            // Also ensure tags is always an array
+            if (!is_array($note->tags)) {
+                $note->tags = [];
+            }
         }
         
-        $notes = $query->paginate(10);
-        $allUsers = User::orderBy('name')->get();
+        // Get all users for filter dropdown
+        $users = User::orderBy('name')->get(['id', 'name', 'email']);
         
-        // Calculate stats
+        // Calculate stats - same pattern as AdminClasses
+        $totalNotes = Note::count();
+        $recentNotes = Note::where('created_at', '>=', Carbon::now()->subDays(7))->count();
+        $notesWithTags = Note::whereNotNull('tags')->where('tags', '!=', '[]')->where('tags', '!=', 'null')->count();
+        $uniqueUsers = Note::distinct('user_id')->count('user_id');
+        
         $stats = [
-            'totalNotes' => Note::count(),
-            'recentNotes' => Note::whereDate('created_at', '>=', now()->subDays(7))->count(),
-            'notesWithTags' => Note::whereNotNull('tags')->where('tags', '!=', '[]')->count(),
-            'notesPerUser' => round(Note::count() / max(User::count(), 1), 1),
+            'totalNotes' => $totalNotes,
+            'recentNotes' => $recentNotes,
+            'notesWithTags' => $notesWithTags,
+            'avgPerUser' => $uniqueUsers > 0 ? round($totalNotes / $uniqueUsers, 1) : 0
         ];
         
-        // Get top tags
-        $allTags = Note::whereNotNull('tags')
-            ->where('tags', '!=', '[]')
-            ->pluck('tags')
-            ->flatMap(function($tags) {
-                return is_array($tags) ? $tags : [];
-            })
-            ->filter()
-            ->countBy()
-            ->sortDesc()
-            ->take(5)
-            ->toArray();
-        
-        // Check if there's a success message from create/update
-        $success = session('success');
-        $error = session('error');
-        
-        return view('admin.notes.index', [
+        // Return in same format as AdminClasses
+        return response()->json([
             'notes' => $notes,
             'users' => $users,
-            'allUsers' => $allUsers,
-            'stats' => $stats,
-            'topTags' => $allTags,
-            'success' => $success,
-            'error' => $error
+            'stats' => $stats
         ]);
     }
     
-    public function create()
+    /**
+     * Get statistics for dashboard cards (standalone endpoint - kept for backward compatibility)
+     */
+    public function stats()
     {
-        $users = User::orderBy('name')->get();
-        return view('admin.notes.create', compact('users'));
+        $totalNotes = Note::count();
+        $recentNotes = Note::where('created_at', '>=', Carbon::now()->subDays(7))->count();
+        $notesWithTags = Note::whereNotNull('tags')->where('tags', '!=', '[]')->where('tags', '!=', 'null')->count();
+        $uniqueUsers = Note::distinct('user_id')->count('user_id');
+        
+        return response()->json([
+            'totalNotes' => $totalNotes,
+            'recentNotes' => $recentNotes,
+            'notesWithTags' => $notesWithTags,
+            'avgPerUser' => $uniqueUsers > 0 ? round($totalNotes / $uniqueUsers, 1) : 0
+        ]);
     }
     
+    /**
+     * Get top tags for the tags cloud
+     */
+    public function tags()
+    {
+        $notes = Note::whereNotNull('tags')->where('tags', '!=', '[]')->where('tags', '!=', 'null')->get();
+        $tagCounts = [];
+        
+        foreach ($notes as $note) {
+            $tags = is_array($note->tags) ? $note->tags : (json_decode($note->tags, true) ?: []);
+            foreach ($tags as $tag) {
+                $tag = trim($tag);
+                if ($tag) {
+                    $tagCounts[$tag] = ($tagCounts[$tag] ?? 0) + 1;
+                }
+            }
+        }
+        
+        arsort($tagCounts);
+        $topTags = array_slice($tagCounts, 0, 20);
+        
+        return response()->json($topTags);
+    }
+    
+    /**
+     * Get list of users for filters
+     */
+    public function list()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * Get all users for dropdown (alias for list)
+     */
+    public function users()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * Store a new note
+     */
     public function store(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'content' => 'nullable|string',
+            'tags' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
         try {
-            DB::beginTransaction();
-            
-            $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'title' => 'required|string|max:255',
-                'content' => 'required|string',
-                'tags' => 'nullable|string|max:500',
-            ]);
-            
-            // Convert tags from comma-separated string to array
-            if (!empty($validated['tags'])) {
-                $tags = array_map('trim', explode(',', $validated['tags']));
-                $tags = array_unique(array_filter($tags));
-                $validated['tags'] = $tags;
-            } else {
-                $validated['tags'] = [];
+            // Process tags
+            $tags = [];
+            if (!empty($request->tags)) {
+                $tags = array_map('trim', explode(',', $request->tags));
+                $tags = array_filter($tags);
             }
             
-            $note = Note::create($validated);
+            $note = Note::create([
+                'user_id' => $request->user_id,
+                'title' => $request->title,
+                'content' => $request->content,
+                'tags' => $tags
+            ]);
             
-            DB::commit();
+            $note->load('user');
             
-            return redirect()->route('admin.notes.index')
-                ->with('success', 'Note created successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Note created successfully',
+                'note' => $note
+            ], 201);
             
         } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error creating note: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating note: ' . $e->getMessage()
+            ], 500);
         }
     }
     
-    public function show($id)
-    {
-        $note = Note::with('user')->findOrFail($id);
-        
-        return view('admin.notes.show', compact('note'));
-    }
-    
-    public function edit($id)
-    {
-        $note = Note::findOrFail($id);
-        $users = User::orderBy('name')->get();
-        
-        return view('admin.notes.edit', compact('note', 'users'));
-    }
-    
+    /**
+     * Update a note
+     */
     public function update(Request $request, $id)
     {
         try {
-            DB::beginTransaction();
-            
             $note = Note::findOrFail($id);
-            
-            $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'title' => 'required|string|max:255',
-                'content' => 'required|string',
-                'tags' => 'nullable|string|max:500',
-            ]);
-            
-            // Convert tags from comma-separated string to array
-            if (!empty($validated['tags'])) {
-                $tags = array_map('trim', explode(',', $validated['tags']));
-                $tags = array_unique(array_filter($tags));
-                $validated['tags'] = $tags;
-            } else {
-                $validated['tags'] = [];
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Note not found'
+            ], 404);
+        }
+        
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'content' => 'nullable|string',
+            'tags' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        try {
+            // Process tags
+            $tags = [];
+            if (!empty($request->tags)) {
+                $tags = array_map('trim', explode(',', $request->tags));
+                $tags = array_filter($tags);
             }
             
-            $note->update($validated);
+            $note->update([
+                'user_id' => $request->user_id,
+                'title' => $request->title,
+                'content' => $request->content,
+                'tags' => $tags
+            ]);
             
-            DB::commit();
+            $note->load('user');
             
-            return redirect()->route('admin.notes.index')
-                ->with('success', 'Note updated successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Note updated successfully',
+                'note' => $note
+            ]);
             
         } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error updating note: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating note: ' . $e->getMessage()
+            ], 500);
         }
     }
     
+    /**
+     * Delete a note
+     */
     public function destroy($id)
     {
         try {
-            DB::beginTransaction();
-            
             $note = Note::findOrFail($id);
             $noteTitle = $note->title;
             $note->delete();
             
-            DB::commit();
-            
-            return redirect()->route('admin.notes.index')
-                ->with('success', 'Note "' . $noteTitle . '" deleted successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => "Note '{$noteTitle}' deleted successfully"
+            ]);
             
         } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->with('error', 'Error deleting note: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting note: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

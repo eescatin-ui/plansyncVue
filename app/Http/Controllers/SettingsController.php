@@ -10,17 +10,6 @@ use Illuminate\Validation\Rules\Password;
 
 class SettingsController extends Controller
 {
-    public function index()
-    {
-        $user = Auth::user();
-        $preferences = $user->preferences ?? [];
-        
-        return view('settings.index', [
-            'user' => $user,
-            'preferences' => $preferences
-        ]);
-    }
-    
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
@@ -33,14 +22,15 @@ class SettingsController extends Controller
         
         $user->update($validated);
         
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Profile updated successfully!',
-                'user' => $user
-            ]);
-        }
-        
-        return redirect()->route('settings.index')->with('success', 'Profile updated successfully!');
+        return response()->json([
+            'message' => 'Profile updated successfully!',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar_color' => $user->avatar_color
+            ]
+        ]);
     }
     
     public function updatePreferences(Request $request)
@@ -61,14 +51,10 @@ class SettingsController extends Controller
         $user->preferences = $preferences;
         $user->save();
         
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Preferences saved successfully!',
-                'preferences' => $preferences
-            ]);
-        }
-        
-        return redirect()->route('settings.index')->with('success', 'Preferences saved successfully!');
+        return response()->json([
+            'message' => 'Preferences saved successfully!',
+            'preferences' => $preferences
+        ]);
     }
     
     public function changePassword(Request $request)
@@ -87,27 +73,14 @@ class SettingsController extends Controller
         $user->password = Hash::make($validated['new_password']);
         $user->save();
         
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Password changed successfully!'
-            ]);
-        }
-        
-        return redirect()->route('settings.index')->with('success', 'Password changed successfully!');
+        return response()->json(['message' => 'Password changed successfully!']);
     }
     
     public function deleteAccount(Request $request)
     {
         $user = Auth::user();
-        
-        // You might want to add additional validation here
         $user->delete();
         
-        if ($request->wantsJson()) {
-            return response()->json(['message' => 'Account deleted successfully']);
-        }
-        
-        Auth::logout();
-        return redirect('/')->with('success', 'Account deleted successfully');
+        return response()->json(['message' => 'Account deleted successfully']);
     }
 }

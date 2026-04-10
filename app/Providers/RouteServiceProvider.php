@@ -2,20 +2,35 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    public function boot()
+    public const HOME = '/dashboard';
+
+    public function boot(): void
     {
-        parent::boot();
-        
-        // Fix duplicate route names
-        Route::resourceVerbs([
-            'create' => 'create',
-            'edit' => 'edit',
-        ]);
-        
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        $this->routes(function () {
+            // API routes
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
+
+            // User Web routes (must be loaded first)
+            Route::middleware('web')
+                ->group(base_path('routes/web.php'));
+
+            // Admin routes (loaded separately, must be after web.php)
+            Route::middleware('web')
+                ->group(base_path('routes/admin.php'));
+        });
     }
 }

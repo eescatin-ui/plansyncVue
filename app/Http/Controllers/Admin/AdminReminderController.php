@@ -7,17 +7,25 @@ use App\Models\Reminder;
 use App\Models\User;
 use App\Models\Task;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class AdminReminderController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display the admin reminders view (returns Vue SPA)
+     */
+    public function index()
     {
-        // Get all users for filter dropdown
-        $users = User::orderBy('name')->get();
-        $tasks = Task::orderBy('title')->get();
-        
-        // Build reminders query
-        $query = Reminder::with(['user', 'task'])->latest();
+        return view('app');
+    }
+    
+    /**
+     * API endpoint for fetching reminders data (includes stats like AdminClasses)
+     */
+    public function api(Request $request)
+    {
+        $query = Reminder::with(['user', 'task']);
         
         // Apply filters
         if ($request->has('user_id') && $request->user_id) {
@@ -28,120 +36,216 @@ class AdminReminderController extends Controller
             $query->where('task_id', $request->task_id);
         }
         
-        if ($request->has('status') && $request->status) {
-            if ($request->status === 'upcoming') {
-                $query->where('reminder_time', '>=', now());
-            } elseif ($request->status === 'past') {
-                $query->where('reminder_time', '<', now());
-            }
-        }
-        
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('task', function($taskQuery) use ($search) {
-                      $taskQuery->where('title', 'like', "%{$search}%");
-                  });
+                  ->orWhere('description', 'like', "%{$search}%");
             });
         }
         
-        $reminders = $query->paginate(10);
-        $allUsers = User::orderBy('name')->get();
-        $allTasks = Task::orderBy('title')->get();
+        $perPage = $request->get('per_page', 10);
+        $reminders = $query->orderBy('reminder_time', 'asc')->paginate($perPage);
         
-        // Calculate stats
-        $now = now();
+        // Get all users for filter dropdown
+        $users = User::orderBy('name')->get(['id', 'name', 'email']);
+        
+        // Get all tasks for filter dropdown
+        $tasks = Task::select('id', 'title', 'user_id')->with('user')->orderBy('title')->get();
+        
+        // Calculate stats - same pattern as AdminClasses
+        $now = Carbon::now();
+        $totalReminders = Reminder::count();
+        $upcomingReminders = Reminder::where('reminder_time', '>', $now)->count();
+        $pastReminders = Reminder::where('reminder_time', '<', $now)->count();
+        $remindersWithTasks = Reminder::whereNotNull('task_id')->count();
+        $todaysReminders = Reminder::whereDate('reminder_time', $now->toDateString())->count();
+        
         $stats = [
-            'totalReminders' => Reminder::count(),
-            'upcomingReminders' => Reminder::where('reminder_time', '>=', $now)->count(),
-            'pastReminders' => Reminder::where('reminder_time', '<', $now)->count(),
-            'remindersWithTasks' => Reminder::whereNotNull('task_id')->count(),
-            'todaysReminders' => Reminder::whereDate('reminder_time', $now->toDateString())->count(),
+            'totalReminders' => $totalReminders,
+            'upcomingReminders' => $upcomingReminders,
+            'pastReminders' => $pastReminders,
+            'remindersWithTasks' => $remindersWithTasks,
+            'todaysReminders' => $todaysReminders
         ];
         
-        // Get upcoming reminders for the next 24 hours
-        $next24Hours = Reminder::with('user')
-            ->whereBetween('reminder_time', [$now, $now->copy()->addHours(24)])
-            ->orderBy('reminder_time')
-            ->take(5)
+        // Get next 24 hours reminders
+        $next24HoursReminders = Reminder::with(['user', 'task'])
+            ->where('reminder_time', '>', $now)
+            ->where('reminder_time', '<', $now->copy()->addHours(24))
+            ->orderBy('reminder_time', 'asc')
             ->get();
         
-        return view('admin.reminders.index', [
+        // Return in same format as AdminClasses
+        return response()->json([
             'reminders' => $reminders,
             'users' => $users,
             'tasks' => $tasks,
-            'allUsers' => $allUsers,
-            'allTasks' => $allTasks,
             'stats' => $stats,
-            'next24Hours' => $next24Hours,
+            'next24HoursReminders' => $next24HoursReminders
         ]);
     }
     
+    /**
+     * Get statistics for dashboard cards (standalone endpoint - kept for backward compatibility)
+     */
+    public function stats()
+    {
+        $now = Carbon::now();
+        $totalReminders = Reminder::count();
+        $upcomingReminders = Reminder::where('reminder_time', '>', $now)->count();
+        $pastReminders = Reminder::where('reminder_time', '<', $now)->count();
+        $remindersWithTasks = Reminder::whereNotNull('task_id')->count();
+        $todaysReminders = Reminder::whereDate('reminder_time', $now->toDateString())->count();
+        
+        return response()->json([
+            'totalReminders' => $totalReminders,
+            'upcomingReminders' => $upcomingReminders,
+            'pastReminders' => $pastReminders,
+            'remindersWithTasks' => $remindersWithTasks,
+            'todaysReminders' => $todaysReminders
+        ]);
+    }
+    
+    /**
+     * Get upcoming reminders for next 24 hours
+     */
+    public function upcoming()
+    {
+        $now = Carbon::now();
+        $upcomingReminders = Reminder::with(['user', 'task'])
+            ->where('reminder_time', '>', $now)
+            ->where('reminder_time', '<', $now->copy()->addHours(24))
+            ->orderBy('reminder_time', 'asc')
+            ->get();
+        
+        return response()->json($upcomingReminders);
+    }
+    
+    /**
+     * Get list of users for filters
+     */
+    public function list()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * Get all users for dropdown (alias for list)
+     */
+    public function users()
+    {
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        return response()->json($users);
+    }
+    
+    /**
+     * Get all tasks for dropdown
+     */
+    public function tasks()
+    {
+        $tasks = Task::select('id', 'title', 'user_id')->with('user')->orderBy('title')->get();
+        return response()->json($tasks);
+    }
+    
+    /**
+     * Store a new reminder
+     */
     public function store(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'reminder_time' => 'required|date',
+            'task_id' => 'nullable|exists:tasks,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
         try {
-            $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'title' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'reminder_time' => 'required|date',
-                'task_id' => 'nullable|exists:tasks,id',
+            $reminder = Reminder::create([
+                'user_id' => $request->user_id,
+                'title' => $request->title,
+                'description' => $request->description,
+                'reminder_time' => $request->reminder_time,
+                'task_id' => $request->task_id,
+                'is_active' => true
             ]);
             
-            // Validate reminder time is in the future
-            if (strtotime($validated['reminder_time']) <= time()) {
-                return back()->withErrors(['reminder_time' => 'Reminder time must be in the future.'])->withInput();
-            }
+            $reminder->load(['user', 'task']);
             
-            Reminder::create($validated);
-            
-            return redirect()->route('admin.reminders.index')
-                ->with('success', 'Reminder created successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Reminder created successfully',
+                'reminder' => $reminder
+            ], 201);
             
         } catch (\Exception $e) {
-            return back()->with('error', 'Error creating reminder: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating reminder: ' . $e->getMessage()
+            ], 500);
         }
     }
     
-    public function edit($id)
-    {
-        // This is handled via modal in the view
-    }
-    
+    /**
+     * Update a reminder
+     */
     public function update(Request $request, $id)
     {
         try {
-            $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'title' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'reminder_time' => 'required|date',
-                'task_id' => 'nullable|exists:tasks,id',
+            $reminder = Reminder::findOrFail($id);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reminder not found'
+            ], 404);
+        }
+        
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'reminder_time' => 'required|date',
+            'task_id' => 'nullable|exists:tasks,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        try {
+            $reminder->update([
+                'user_id' => $request->user_id,
+                'title' => $request->title,
+                'description' => $request->description,
+                'reminder_time' => $request->reminder_time,
+                'task_id' => $request->task_id
             ]);
             
-            $reminder = Reminder::findOrFail($id);
+            $reminder->load(['user', 'task']);
             
-            // Only validate future time for upcoming reminders
-            if ($reminder->reminder_time->isFuture() && strtotime($validated['reminder_time']) <= time()) {
-                return back()->withErrors(['reminder_time' => 'Reminder time must be in the future.'])->withInput();
-            }
-            
-            $reminder->update($validated);
-            
-            return redirect()->route('admin.reminders.index')
-                ->with('success', 'Reminder updated successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Reminder updated successfully',
+                'reminder' => $reminder
+            ]);
             
         } catch (\Exception $e) {
-            return back()->with('error', 'Error updating reminder: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating reminder: ' . $e->getMessage()
+            ], 500);
         }
     }
     
+    /**
+     * Delete a reminder
+     */
     public function destroy($id)
     {
         try {
@@ -149,11 +253,16 @@ class AdminReminderController extends Controller
             $reminderTitle = $reminder->title;
             $reminder->delete();
             
-            return redirect()->route('admin.reminders.index')
-                ->with('success', 'Reminder "' . $reminderTitle . '" deleted successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => "Reminder '{$reminderTitle}' deleted successfully"
+            ]);
             
         } catch (\Exception $e) {
-            return back()->with('error', 'Error deleting reminder: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting reminder: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

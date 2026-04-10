@@ -19,7 +19,8 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            'vue': 'vue/dist/vue.esm-bundler.js' // This tells Vite to use the compiler version
+            '@': '/resources/js',
+            'vue': 'vue/dist/vue.esm-bundler.js'
         },
     },
 });

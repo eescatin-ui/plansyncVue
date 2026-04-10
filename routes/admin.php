@@ -13,99 +13,84 @@ use App\Http\Controllers\Admin\AdminSearchController;
 
 /*
 |--------------------------------------------------------------------------
-| Admin Routes - Separate Login System
+| Admin Routes
 |--------------------------------------------------------------------------
-|
-| These routes are for administrators only with separate login
-| Accessible at /admin/*
-|
 */
 
-// Admin Auth Routes (Separate from user auth)
-Route::middleware('guest:web')->group(function () {
-    Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
-    Route::post('/admin/login', [AdminAuthController::class, 'login']);
-    
-    // Optional: Admin setup route (remove in production)
-    Route::get('/admin/setup', [AdminAuthController::class, 'createAdminUser']);
-});
+// =============================================
+// PUBLIC ADMIN ROUTES
+// =============================================
+Route::get('/admin/login', function () {
+    return view('app');
+})->name('admin.login');
 
-// Protected Admin Routes (Requires admin authentication)
-Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+Route::post('/admin/login', [AdminAuthController::class, 'login']);
+Route::get('/admin/setup', [AdminAuthController::class, 'createAdminUser']);
+
+// =============================================
+// PROTECTED ADMIN ROUTES
+// =============================================
+Route::middleware(['auth:admin'])->group(function () {
     
-    // AJAX data loading routes for modals
-    Route::get('/users/list', [AdminUserController::class, 'list'])->name('users.list');
-    Route::get('/tasks/list', [AdminTaskController::class, 'list'])->name('tasks.list');
-    Route::get('/classes/list', [AdminClassController::class, 'list'])->name('classes.list');
-    Route::get('/notes/list', [AdminNoteController::class, 'list'])->name('notes.list');
-    Route::get('/reminders/list', [AdminReminderController::class, 'list'])->name('reminders.list');
+    // PAGE ROUTES (Return Vue SPA) - ADD NAMES HERE
+    Route::get('/admin/dashboard', function () { return view('app'); })->name('admin.dashboard');
+    Route::get('/admin/classes', function () { return view('app'); })->name('admin.classes');
+    Route::get('/admin/users', function () { return view('app'); })->name('admin.users');
+    Route::get('/admin/tasks', function () { return view('app'); })->name('admin.tasks');
+    Route::get('/admin/notes', function () { return view('app'); })->name('admin.notes');
+    Route::get('/admin/reminders', function () { return view('app'); })->name('admin.reminders');
+    Route::get('/admin/analytics', function () { return view('app'); })->name('admin.analytics');
+    Route::get('/admin/search', function () { return view('app'); })->name('admin.search');
     
-    // Users Management
-    Route::prefix('users')->name('users.')->group(function () {
-        Route::get('/', [AdminUserController::class, 'index'])->name('index');
-        Route::get('/create', [AdminUserController::class, 'create'])->name('create');
-        Route::post('/', [AdminUserController::class, 'store'])->name('store');
-        Route::get('/{user}', [AdminUserController::class, 'show'])->name('show');
-        Route::get('/{user}/edit', [AdminUserController::class, 'edit'])->name('edit');
-        Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
-        Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
-    });
+    // ========== CLASSES API ROUTES ==========
+    Route::get('/admin/classes/api', [AdminClassController::class, 'api']);
+    Route::get('/admin/classes/api/{id}', [AdminClassController::class, 'show']);
+    Route::get('/admin/classes/list', [AdminClassController::class, 'list']);
+    Route::post('/admin/classes', [AdminClassController::class, 'store']);
+    Route::put('/admin/classes/{id}', [AdminClassController::class, 'update']);
+    Route::delete('/admin/classes/{id}', [AdminClassController::class, 'destroy']);
     
-    // Classes Management
-    Route::prefix('classes')->name('classes.')->group(function () {
-        Route::get('/', [AdminClassController::class, 'index'])->name('index');
-        Route::post('/', [AdminClassController::class, 'store'])->name('store');
-        Route::get('/{class}', [AdminClassController::class, 'show'])->name('show');
-        Route::get('/{class}/edit', [AdminClassController::class, 'edit'])->name('edit');
-        Route::put('/{class}', [AdminClassController::class, 'update'])->name('update');
-        Route::delete('/{class}', [AdminClassController::class, 'destroy'])->name('destroy');
-    });
+    // ========== USERS API ROUTES ==========
+    Route::get('/admin/users/api', [AdminUserController::class, 'api']);
+    Route::get('/admin/users/api/{id}', [AdminUserController::class, 'show']);
+    Route::get('/admin/users/list', [AdminUserController::class, 'list']);
+    Route::post('/admin/users', [AdminUserController::class, 'store']);
+    Route::put('/admin/users/{id}', [AdminUserController::class, 'update']);
+    Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy']);
     
-    // Tasks Management
-    Route::prefix('tasks')->name('tasks.')->group(function () {
-        Route::get('/', [AdminTaskController::class, 'index'])->name('index');
-        Route::post('/', [AdminTaskController::class, 'store'])->name('store');
-        Route::get('/{task}', [AdminTaskController::class, 'show'])->name('show');
-        Route::get('/{task}/edit', [AdminTaskController::class, 'edit'])->name('edit');
-        Route::put('/{task}', [AdminTaskController::class, 'update'])->name('update');
-        Route::delete('/{task}', [AdminTaskController::class, 'destroy'])->name('destroy');
-    });
+    // ========== DASHBOARD API ==========
+    Route::get('/admin/api/dashboard/stats', [AdminDashboardController::class, 'stats']);
+    Route::get('/admin/api/dashboard/recent-users', [AdminDashboardController::class, 'recentUsers']);
+    Route::get('/admin/api/dashboard/recent-tasks', [AdminDashboardController::class, 'recentTasks']);
     
-    // Notes Management
-Route::prefix('notes')->name('notes.')->group(function () {
-    Route::get('/', [AdminNoteController::class, 'index'])->name('index');
-    Route::post('/', [AdminNoteController::class, 'store'])->name('store');
-    Route::put('/{note}', [AdminNoteController::class, 'update'])->name('update');
-    Route::delete('/{note}', [AdminNoteController::class, 'destroy'])->name('destroy');
-});
+    // ========== AUTH API ==========
+    Route::get('/admin/api/verify', [AdminAuthController::class, 'verify']);
+    Route::post('/admin/logout', [AdminAuthController::class, 'logout']);
     
-    // Reminders Management
-    Route::prefix('reminders')->name('reminders.')->group(function () {
-        Route::get('/', [AdminReminderController::class, 'index'])->name('index');
-        Route::get('/create', [AdminReminderController::class, 'create'])->name('create');
-        Route::post('/', [AdminReminderController::class, 'store'])->name('store');
-        Route::get('/{reminder}', [AdminReminderController::class, 'show'])->name('show');
-        Route::get('/{reminder}/edit', [AdminReminderController::class, 'edit'])->name('edit');
-        Route::put('/{reminder}', [AdminReminderController::class, 'update'])->name('update');
-        Route::delete('/{reminder}', [AdminReminderController::class, 'destroy'])->name('destroy');
-        Route::post('/{reminder}/toggle-status', [AdminReminderController::class, 'toggleStatus'])->name('toggle-status');
-        Route::get('/upcoming', [AdminReminderController::class, 'upcoming'])->name('upcoming');
-    });
+    // Tasks API
+    Route::get('/admin/tasks/api', [AdminTaskController::class, 'api']);
+    Route::get('/admin/tasks/api/{id}', [AdminTaskController::class, 'show']);
+    Route::post('/admin/tasks', [AdminTaskController::class, 'store']);
+    Route::put('/admin/tasks/{id}', [AdminTaskController::class, 'update']);
+    Route::delete('/admin/tasks/{id}', [AdminTaskController::class, 'destroy']);
     
-    // Additional routes
-    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics');
-    Route::get('/analytics/export', [AdminAnalyticsController::class, 'export'])->name('analytics.export');
+    // Notes API
+    Route::get('/admin/notes/api', [AdminNoteController::class, 'api']);
+    Route::get('/admin/notes/api/{id}', [AdminNoteController::class, 'show']);
+    Route::post('/admin/notes', [AdminNoteController::class, 'store']);
+    Route::put('/admin/notes/{id}', [AdminNoteController::class, 'update']);
+    Route::delete('/admin/notes/{id}', [AdminNoteController::class, 'destroy']);
     
-    Route::get('/search', [AdminSearchController::class, 'search'])->name('search');
+    // Reminders API
+    Route::get('/admin/reminders/api', [AdminReminderController::class, 'api']);
+    Route::get('/admin/reminders/api/{id}', [AdminReminderController::class, 'show']);
+    Route::post('/admin/reminders', [AdminReminderController::class, 'store']);
+    Route::put('/admin/reminders/{id}', [AdminReminderController::class, 'update']);
+    Route::delete('/admin/reminders/{id}', [AdminReminderController::class, 'destroy']);
     
-    // Logout
-    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+    // Analytics API
+    Route::get('/admin/analytics/data', [AdminAnalyticsController::class, 'data']);
     
-    // Switch to user panel
-    Route::get('/switch-to-user', function () {
-        session(['viewing_as_admin' => false]);
-        return redirect()->route('dashboard');
-    })->name('switch-to-user');
+    // Search API
+    Route::get('/admin/search/api', [AdminSearchController::class, 'api']);
 });

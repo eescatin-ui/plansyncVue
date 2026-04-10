@@ -8,11 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
-    public function showLoginForm()
-    {
-        return view('auth.login');
-    }
-
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -20,42 +15,35 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        $remember = $request->has('remember');
-
-        if (Auth::attempt($credentials, $remember)) {
+        if (Auth::attempt($credentials, $request->has('remember'))) {
             $request->session()->regenerate();
             
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'message' => 'Login successful',
-                    'redirect' => '/dashboard'
-                ]);
-            }
+            $user = Auth::user();
             
-            return redirect()->intended('/dashboard');
-        }
-
-        if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'The provided credentials do not match our records.'
-            ], 401);
+                'success' => true,
+                'message' => 'Login successful',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar_color' => $user->avatar_color ?? '#4361ee'
+                ]
+            ]);
         }
 
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid credentials'
+        ], 401);
     }
-
+    
     public function logout(Request $request)
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        if ($request->wantsJson()) {
-            return response()->json(['redirect' => '/login']);
-        }
-        
-        return redirect('/login');
+        return response()->json(['success' => true]);
     }
 }

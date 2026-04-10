@@ -10,35 +10,32 @@ use Illuminate\Support\Facades\Hash;
 
 class RegisterController extends Controller
 {
-    public function showRegisterForm()
-    {
-        return view('auth.register');
-    }
-
     public function register(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ]);
-
+        
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'avatar_color' => $this->generateAvatarColor(),
-            'preferences' => ['theme' => 'light', 'default_view' => 'week'],
+            'avatar_color' => '#4361ee'
         ]);
-
+        
         Auth::login($user);
-
-        return redirect('/dashboard');
-    }
-
-    private function generateAvatarColor()
-    {
-        $colors = ['#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0'];
-        return $colors[array_rand($colors)];
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration successful',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar_color' => $user->avatar_color
+            ]
+        ], 201);
     }
 }

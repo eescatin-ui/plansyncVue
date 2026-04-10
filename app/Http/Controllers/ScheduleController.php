@@ -5,31 +5,30 @@ namespace App\Http\Controllers;
 use App\Models\ClassSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // Add this
+use Carbon\Carbon;
 
 class ScheduleController extends Controller
 {
-    use AuthorizesRequests; // Add this trait
-
     public function index(Request $request)
     {
-        $classes = ClassSchedule::where('user_id', Auth::id())
-            ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')")
-            ->orderBy('time')
-            ->get();
-            
-        $uniqueClassNames = $classes->pluck('name')->unique()->values();
-
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json($classes);
+        $query = ClassSchedule::where('user_id', Auth::id());
+        
+        // Filter by day if provided
+        if ($request->has('day')) {
+            $query->where('day', $request->day);
         }
-
-        return view('schedule.index', [
-            'classes' => $classes,
-            'uniqueClassNames' => $uniqueClassNames
-        ]);
+        
+        // Filter for today's classes
+        if ($request->has('today')) {
+            $today = Carbon::today()->format('l');
+            $query->where('day', $today);
+        }
+        
+        $classes = $query->orderBy('time')->get();
+        
+        return response()->json($classes);
     }
-
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -39,7 +38,7 @@ class ScheduleController extends Controller
             'day' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
             'color' => 'required|string'
         ]);
-
+        
         $class = ClassSchedule::create([
             'user_id' => Auth::id(),
             'name' => $validated['name'],
@@ -48,62 +47,25 @@ class ScheduleController extends Controller
             'day' => $validated['day'],
             'color' => $validated['color']
         ]);
-
-        if ($request->wantsJson()) {
-            return response()->json($class, 201);
-        }
-
-        return redirect()->route('schedule.index')->with('success', 'Class added successfully!');
+        
+        return response()->json($class, 201);
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Request $request, ClassSchedule $schedule)
+    
+    public function edit(Request $request, ClassSchedule $schedule)
     {
-        // Check if the user owns this class
         if ($schedule->user_id !== Auth::id()) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            abort(403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
         
         return response()->json($schedule);
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Request $request, ClassSchedule $schedule)
-    {
-        // Check if the user owns this class
-        if ($schedule->user_id !== Auth::id()) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            abort(403);
-        }
-        
-        // For API requests, return JSON
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json($schedule);
-        }
-        
-        // For web requests, return the edit view
-        return view('schedule.edit', compact('schedule'));
-    }
-
+    
     public function update(Request $request, ClassSchedule $schedule)
     {
-        // Check if the user owns this class
         if ($schedule->user_id !== Auth::id()) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            abort(403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
-
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'time' => 'required|string|max:50',
@@ -111,32 +73,20 @@ class ScheduleController extends Controller
             'day' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
             'color' => 'required|string'
         ]);
-
+        
         $schedule->update($validated);
-
-        if ($request->wantsJson()) {
-            return response()->json($schedule);
-        }
-
-        return redirect()->route('schedule.index')->with('success', 'Class updated successfully!');
+        
+        return response()->json($schedule);
     }
-
-    public function destroy(Request $request, ClassSchedule $schedule)
+    
+    public function destroy(ClassSchedule $schedule)
     {
-        // Check if the user owns this class
         if ($schedule->user_id !== Auth::id()) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            abort(403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
         
         $schedule->delete();
-
-        if ($request->wantsJson()) {
-            return response()->json(['message' => 'Class deleted successfully']);
-        }
-
-        return redirect()->route('schedule.index')->with('success', 'Class deleted successfully!');
+        
+        return response()->json(['message' => 'Class deleted successfully']);
     }
 }

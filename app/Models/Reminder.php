@@ -11,32 +11,41 @@ class Reminder extends Model
 
     protected $fillable = [
         'user_id',
-        'title',
-        'subtitle',
-        'reminder_time',
-        'type',
         'task_id',
-        'class_id'
+        'title',
+        'description',
+        'reminder_time',
+        'is_active',
+        'is_task_reminder',
     ];
 
     protected $casts = [
         'reminder_time' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'is_active' => 'boolean',
+        'is_task_reminder' => 'boolean',
     ];
 
+    // Relationship with User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // Relationship with Task (optional)
     public function task()
     {
         return $this->belongsTo(Task::class);
     }
 
-    public function class()
+    // Scope for active reminders
+    public function scopeActive($query)
     {
-        return $this->belongsTo(ClassSchedule::class, 'class_id');
+        return $query->where('is_active', true);
+    }
+
+    // Scope for upcoming reminders
+    public function scopeUpcoming($query)
+    {
+        return $query->where('reminder_time', '>', now())->orderBy('reminder_time', 'asc');
     }
 }

@@ -1,19 +1,16 @@
 <template>
-    <div class="settings">
+    <div class="settings-manager">
+        <!-- ========== MODULE HEADER ========== -->
         <div class="module-header">
-            <h2 class="module-title">
-                <i class="fas fa-cog"></i> Settings
-            </h2>
+            <div class="header-left">
+                <h2 class="module-title">
+                    <i class="fas fa-cog"></i> Settings
+                </h2>
+                <p class="module-subtitle">Manage your account preferences and security</p>
+            </div>
         </div>
 
-        <!-- Success/Error Alerts -->
-        <div v-if="successMessage" class="alert-success">
-            <i class="fas fa-check-circle"></i> {{ successMessage }}
-        </div>
-        <div v-if="errorMessage" class="alert-error">
-            <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
-        </div>
-
+        <!-- ========== SETTINGS GRID ========== -->
         <div class="settings-grid">
             <!-- Settings Menu -->
             <div class="settings-menu-card">
@@ -38,30 +35,63 @@
 
             <!-- Settings Content -->
             <div class="settings-content">
-                <!-- Profile Tab -->
+                <!-- ========== PROFILE TAB ========== -->
                 <div v-show="activeTab === 'profile'" class="setting-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-user"></i> Profile Settings</h3>
+                        <h3><i class="fas fa-user-circle"></i> Profile Settings</h3>
                         <p>Update your personal information</p>
+                    </div>
+
+                    <!-- Success/Error Alerts -->
+                    <div v-if="successMessage" class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> {{ successMessage }}
+                    </div>
+                    <div v-if="errorMessage" class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
                     </div>
 
                     <form @submit.prevent="updateProfile">
                         <div class="form-group">
-                            <label for="name">Full Name</label>
-                            <input type="text" class="form-control" id="name" v-model="profileForm.name" required>
+                            <label for="name">
+                                <i class="fas fa-user"></i> Full Name <span class="text-danger">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="name" 
+                                v-model="profileForm.name" 
+                                required
+                                :disabled="saving"
+                            >
                             <div v-if="errors.name" class="error-message">{{ errors.name[0] }}</div>
                         </div>
 
                         <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" class="form-control" id="email" v-model="profileForm.email" required>
+                            <label for="email">
+                                <i class="fas fa-envelope"></i> Email Address <span class="text-danger">*</span>
+                            </label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="email" 
+                                v-model="profileForm.email" 
+                                required
+                                :disabled="saving"
+                            >
                             <div v-if="errors.email" class="error-message">{{ errors.email[0] }}</div>
                         </div>
 
                         <div class="form-group">
-                            <label>Avatar Color</label>
+                            <label>
+                                <i class="fas fa-palette"></i> Avatar Color
+                            </label>
                             <div class="color-picker">
-                                <label v-for="color in colors" :key="color" class="color-option" :class="{ selected: profileForm.avatar_color === color }">
+                                <label 
+                                    v-for="color in colors" 
+                                    :key="color" 
+                                    class="color-option" 
+                                    :class="{ selected: profileForm.avatar_color === color }"
+                                >
                                     <input type="radio" name="avatar_color" :value="color" v-model="profileForm.avatar_color">
                                     <span class="color-circle" :style="{ backgroundColor: color }"></span>
                                 </label>
@@ -69,7 +99,7 @@
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn" :disabled="saving">
+                            <button type="submit" class="btn btn-primary" :disabled="saving">
                                 <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
                                 {{ saving ? 'Saving...' : 'Save Profile' }}
                             </button>
@@ -77,16 +107,18 @@
                     </form>
                 </div>
 
-                <!-- Preferences Tab -->
+                <!-- ========== PREFERENCES TAB ========== -->
                 <div v-show="activeTab === 'preferences'" class="setting-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-palette"></i> Preferences</h3>
+                        <h3><i class="fas fa-sliders-h"></i> Preferences</h3>
                         <p>Customize your PlanSync experience</p>
                     </div>
 
                     <form @submit.prevent="updatePreferences">
                         <div class="form-group">
-                            <label>Theme</label>
+                            <label>
+                                <i class="fas fa-moon"></i> Theme
+                            </label>
                             <div class="theme-options">
                                 <label class="theme-option" :class="{ selected: preferencesForm.theme === 'light' }">
                                     <input type="radio" name="theme" value="light" v-model="preferencesForm.theme">
@@ -97,7 +129,7 @@
                                             <div class="theme-card"></div>
                                         </div>
                                     </div>
-                                    <span class="theme-label">Light</span>
+                                    <span class="theme-label"><i class="fas fa-sun"></i> Light</span>
                                 </label>
 
                                 <label class="theme-option" :class="{ selected: preferencesForm.theme === 'dark' }">
@@ -109,13 +141,15 @@
                                             <div class="theme-card"></div>
                                         </div>
                                     </div>
-                                    <span class="theme-label">Dark</span>
+                                    <span class="theme-label"><i class="fas fa-moon"></i> Dark</span>
                                 </label>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="default_view">Default Calendar View</label>
+                            <label for="default_view">
+                                <i class="fas fa-calendar-alt"></i> Default Calendar View
+                            </label>
                             <select class="form-control" id="default_view" v-model="preferencesForm.default_view">
                                 <option value="week">Week View</option>
                                 <option value="month">Month View</option>
@@ -123,25 +157,27 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Notifications</label>
+                            <label>
+                                <i class="fas fa-bell"></i> Notifications
+                            </label>
                             <div class="checkbox-group">
                                 <label class="checkbox-label">
                                     <input type="checkbox" v-model="preferencesForm.email_notifications">
-                                    <span>Email notifications</span>
+                                    <span><i class="fas fa-envelope"></i> Email notifications</span>
                                 </label>
                                 <label class="checkbox-label">
                                     <input type="checkbox" v-model="preferencesForm.task_reminders">
-                                    <span>Task reminders</span>
+                                    <span><i class="fas fa-tasks"></i> Task reminders</span>
                                 </label>
                                 <label class="checkbox-label">
                                     <input type="checkbox" v-model="preferencesForm.class_notifications">
-                                    <span>Class notifications</span>
+                                    <span><i class="fas fa-calendar-week"></i> Class notifications</span>
                                 </label>
                             </div>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn" :disabled="saving">
+                            <button type="submit" class="btn btn-primary" :disabled="saving">
                                 <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
                                 {{ saving ? 'Saving...' : 'Save Preferences' }}
                             </button>
@@ -149,15 +185,15 @@
                     </form>
                 </div>
 
-                <!-- Account Tab -->
+                <!-- ========== ACCOUNT TAB ========== -->
                 <div v-show="activeTab === 'account'" class="setting-section">
                     <div class="section-header">
                         <h3><i class="fas fa-shield-alt"></i> Account Security</h3>
                         <p>Manage your account security settings</p>
                     </div>
 
-                    <!-- Change Password -->
-                    <div class="card mb-4">
+                    <!-- Change Password Card -->
+                    <div class="card password-card">
                         <div class="card-header">
                             <h4><i class="fas fa-lock"></i> Change Password</h4>
                         </div>
@@ -166,7 +202,14 @@
                                 <div class="form-group">
                                     <label for="current_password">Current Password</label>
                                     <div class="password-wrapper">
-                                        <input :type="showCurrentPassword ? 'text' : 'password'" class="form-control" id="current_password" v-model="passwordForm.current_password" required>
+                                        <input 
+                                            :type="showCurrentPassword ? 'text' : 'password'" 
+                                            class="form-control" 
+                                            id="current_password" 
+                                            v-model="passwordForm.current_password" 
+                                            required
+                                            :disabled="changingPassword"
+                                        >
                                         <span class="password-toggle" @click="showCurrentPassword = !showCurrentPassword">
                                             <i :class="showCurrentPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                                         </span>
@@ -177,19 +220,33 @@
                                 <div class="form-group">
                                     <label for="new_password">New Password</label>
                                     <div class="password-wrapper">
-                                        <input :type="showNewPassword ? 'text' : 'password'" class="form-control" id="new_password" v-model="passwordForm.new_password" required>
+                                        <input 
+                                            :type="showNewPassword ? 'text' : 'password'" 
+                                            class="form-control" 
+                                            id="new_password" 
+                                            v-model="passwordForm.new_password" 
+                                            required
+                                            :disabled="changingPassword"
+                                        >
                                         <span class="password-toggle" @click="showNewPassword = !showNewPassword">
                                             <i :class="showNewPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                                         </span>
                                     </div>
-                                    <small class="form-text text-muted">Must be at least 8 characters long</small>
+                                    <small class="form-text">Must be at least 8 characters long</small>
                                     <div v-if="errors.new_password" class="error-message">{{ errors.new_password[0] }}</div>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="new_password_confirmation">Confirm New Password</label>
                                     <div class="password-wrapper">
-                                        <input :type="showConfirmPassword ? 'text' : 'password'" class="form-control" id="new_password_confirmation" v-model="passwordForm.new_password_confirmation" required>
+                                        <input 
+                                            :type="showConfirmPassword ? 'text' : 'password'" 
+                                            class="form-control" 
+                                            id="new_password_confirmation" 
+                                            v-model="passwordForm.new_password_confirmation" 
+                                            required
+                                            :disabled="changingPassword"
+                                        >
                                         <span class="password-toggle" @click="showConfirmPassword = !showConfirmPassword">
                                             <i :class="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                                         </span>
@@ -207,7 +264,7 @@
                         </div>
                     </div>
 
-                    <!-- Danger Zone -->
+                    <!-- Danger Zone Card -->
                     <div class="card danger-zone">
                         <div class="card-header">
                             <h4><i class="fas fa-exclamation-triangle"></i> Danger Zone</h4>
@@ -231,20 +288,10 @@ import axios from 'axios';
 
 export default {
     name: 'SettingsManager',
-
-    props: {
-        initialUser: {
-            type: Object,
-            default: () => ({})
-        },
-        initialPreferences: {
-            type: Object,
-            default: () => ({})
-        }
-    },
-
+    
     data() {
         return {
+            // UI State
             activeTab: 'profile',
             saving: false,
             changingPassword: false,
@@ -252,19 +299,19 @@ export default {
             successMessage: '',
             errorMessage: '',
             
-            // Form data
+            // Form Data
             profileForm: {
-                name: this.initialUser.name || '',
-                email: this.initialUser.email || '',
-                avatar_color: this.initialUser.avatar_color || '#4361ee'
+                name: '',
+                email: '',
+                avatar_color: '#4361ee'
             },
             
             preferencesForm: {
-                theme: this.initialPreferences.theme || 'light',
-                default_view: this.initialPreferences.default_view || 'week',
-                email_notifications: this.initialPreferences.email_notifications || false,
-                task_reminders: this.initialPreferences.task_reminders || true,
-                class_notifications: this.initialPreferences.class_notifications || true
+                theme: 'light',
+                default_view: 'week',
+                email_notifications: false,
+                task_reminders: true,
+                class_notifications: true
             },
             
             passwordForm: {
@@ -275,10 +322,10 @@ export default {
             
             errors: {},
             
-            // Color options
+            // Color Options
             colors: ['#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0', '#2d00f7', '#ff0054', '#00bbf9'],
             
-            // Password visibility toggles
+            // Password visibility
             showCurrentPassword: false,
             showNewPassword: false,
             showConfirmPassword: false
@@ -286,24 +333,60 @@ export default {
     },
 
     mounted() {
-        console.log('SettingsManager mounted');
-        
-        // Check for any flash messages
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success')) {
-            this.successMessage = urlParams.get('success');
-            setTimeout(() => { this.successMessage = ''; }, 5000);
-        }
+        this.loadUserData();
+        this.loadPreferences();
+        this.applyTheme();
     },
 
     methods: {
+        // ========== DATA LOADING ==========
+        loadUserData() {
+            // Get user data from window object (set in Blade)
+            this.profileForm.name = window.userName || 'Student';
+            this.profileForm.email = window.userEmail || '';
+            this.profileForm.avatar_color = window.userAvatarColor || '#4361ee';
+        },
+        
+        loadPreferences() {
+            // Load saved preferences from localStorage
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                this.preferencesForm.theme = savedTheme;
+            }
+            
+            const savedView = localStorage.getItem('default_view');
+            if (savedView) {
+                this.preferencesForm.default_view = savedView;
+            }
+            
+            // Load notification preferences
+            const emailNotif = localStorage.getItem('email_notifications');
+            if (emailNotif !== null) this.preferencesForm.email_notifications = emailNotif === 'true';
+            
+            const taskReminders = localStorage.getItem('task_reminders');
+            if (taskReminders !== null) this.preferencesForm.task_reminders = taskReminders === 'true';
+            
+            const classNotif = localStorage.getItem('class_notifications');
+            if (classNotif !== null) this.preferencesForm.class_notifications = classNotif === 'true';
+        },
+        
+        applyTheme() {
+            if (this.preferencesForm.theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        },
+        
+        // ========== TAB MANAGEMENT ==========
         setActiveTab(tab) {
             this.activeTab = tab;
-            // Update URL hash without reload
-            window.location.hash = tab;
             this.errors = {};
+            this.successMessage = '';
+            this.errorMessage = '';
         },
-
+        
+        // ========== PROFILE METHODS ==========
         async updateProfile() {
             this.saving = true;
             this.errors = {};
@@ -314,12 +397,11 @@ export default {
                 const response = await axios.put('/settings/profile', this.profileForm);
                 this.successMessage = response.data.message || 'Profile updated successfully!';
                 
-                // Update the initialUser data
-                this.profileForm.name = response.data.user.name;
-                this.profileForm.email = response.data.user.email;
-                this.profileForm.avatar_color = response.data.user.avatar_color;
+                // Update window user data
+                window.userName = this.profileForm.name;
+                window.userEmail = this.profileForm.email;
+                window.userAvatarColor = this.profileForm.avatar_color;
                 
-                // Clear success message after 3 seconds
                 setTimeout(() => { this.successMessage = ''; }, 3000);
             } catch (error) {
                 if (error.response && error.response.status === 422) {
@@ -333,7 +415,8 @@ export default {
                 this.saving = false;
             }
         },
-
+        
+        // ========== PREFERENCES METHODS ==========
         async updatePreferences() {
             this.saving = true;
             this.errors = {};
@@ -344,12 +427,15 @@ export default {
                 const response = await axios.put('/settings/preferences', this.preferencesForm);
                 this.successMessage = response.data.message || 'Preferences saved successfully!';
                 
-                // Apply theme if changed
-                if (this.preferencesForm.theme === 'dark') {
-                    document.body.classList.add('dark-mode');
-                } else {
-                    document.body.classList.remove('dark-mode');
-                }
+                // Apply theme immediately
+                this.applyTheme();
+                
+                // Save to localStorage
+                localStorage.setItem('theme', this.preferencesForm.theme);
+                localStorage.setItem('default_view', this.preferencesForm.default_view);
+                localStorage.setItem('email_notifications', this.preferencesForm.email_notifications);
+                localStorage.setItem('task_reminders', this.preferencesForm.task_reminders);
+                localStorage.setItem('class_notifications', this.preferencesForm.class_notifications);
                 
                 setTimeout(() => { this.successMessage = ''; }, 3000);
             } catch (error) {
@@ -364,9 +450,10 @@ export default {
                 this.saving = false;
             }
         },
-
+        
+        // ========== PASSWORD METHODS ==========
         async changePassword() {
-            // Validate password match
+            // Client-side validation
             if (this.passwordForm.new_password !== this.passwordForm.new_password_confirmation) {
                 this.errorMessage = 'Passwords do not match!';
                 setTimeout(() => { this.errorMessage = ''; }, 3000);
@@ -408,19 +495,20 @@ export default {
                 this.changingPassword = false;
             }
         },
-
+        
+        // ========== ACCOUNT DELETE METHODS ==========
         confirmDeleteAccount() {
-            if (confirm('Are you absolutely sure? This action cannot be undone!')) {
+            if (confirm('Are you absolutely sure? This action cannot be undone!\n\nAll your data will be permanently deleted.')) {
                 this.deleteAccount();
             }
         },
-
+        
         async deleteAccount() {
             this.deleting = true;
             
             try {
                 await axios.delete('/settings/account');
-                // Redirect to logout or login page
+                // Redirect to logout
                 window.location.href = '/logout';
             } catch (error) {
                 this.errorMessage = error.response?.data?.message || 'Failed to delete account.';
@@ -433,12 +521,15 @@ export default {
 </script>
 
 <style scoped>
-.settings {
+/* ========== MAIN CONTAINER ========== */
+.settings-manager {
     padding: 1.5rem;
     max-width: 1200px;
     margin: 0 auto;
+    min-height: 100vh;
 }
 
+/* ========== HEADER ========== */
 .module-header {
     margin-bottom: 2rem;
 }
@@ -452,45 +543,26 @@ export default {
     margin-bottom: 0.5rem;
 }
 
-/* Alert Styles */
-.alert-success {
-    background-color: #d1e7dd;
-    border: 1px solid #badbcc;
-    color: #0f5132;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.module-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
 }
 
-.alert-error {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-/* Settings Grid */
+/* ========== SETTINGS GRID ========== */
 .settings-grid {
     display: grid;
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 280px 1fr;
     gap: 2rem;
 }
 
-/* Settings Menu Card */
+/* ========== SETTINGS MENU ========== */
 .settings-menu-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     padding: 1rem 0;
     height: fit-content;
+    border: 1px solid #e9ecef;
 }
 
 .settings-menu {
@@ -508,25 +580,31 @@ export default {
     align-items: center;
     gap: 0.8rem;
     padding: 0.8rem 1.5rem;
-    color: var(--dark, #212529);
+    color: #1e293b;
     text-decoration: none;
     transition: all 0.3s;
     border-left: 4px solid transparent;
+    font-weight: 500;
 }
 
 .settings-menu-link:hover,
 .settings-menu-link.active {
-    background-color: var(--light-gray, #f8f9fa);
+    background: #f8fafc;
     border-left-color: var(--primary, #4361ee);
     color: var(--primary, #4361ee);
 }
 
-/* Settings Content */
+.settings-menu-link i {
+    width: 20px;
+}
+
+/* ========== SETTINGS CONTENT ========== */
 .settings-content {
     background: white;
-    border-radius: 12px;
+    border-radius: 20px;
     padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
 }
 
 .setting-section {
@@ -544,10 +622,11 @@ export default {
     }
 }
 
+/* ========== SECTION HEADER ========== */
 .section-header {
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid var(--light-gray, #e9ecef);
+    border-bottom: 1px solid #e9ecef;
 }
 
 .section-header h3 {
@@ -560,10 +639,33 @@ export default {
 }
 
 .section-header p {
-    color: var(--gray, #6c757d);
+    color: #64748b;
+    font-size: 0.9rem;
 }
 
-/* Form Styles */
+/* ========== ALERTS ========== */
+.alert {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+/* ========== FORM ========== */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -572,7 +674,7 @@ export default {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
-    color: var(--dark, #212529);
+    color: #1e293b;
 }
 
 .form-control {
@@ -582,6 +684,7 @@ export default {
     border-radius: 10px;
     font-size: 0.95rem;
     transition: all 0.2s;
+    background: white;
 }
 
 .form-control:focus {
@@ -596,7 +699,14 @@ export default {
     margin-top: 0.25rem;
 }
 
-/* Color Picker */
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* ========== COLOR PICKER ========== */
 .color-picker {
     display: flex;
     gap: 0.5rem;
@@ -623,12 +733,12 @@ export default {
 }
 
 .color-option.selected .color-circle {
-    border-color: var(--dark, #212529);
+    border-color: #1e293b;
     transform: scale(1.1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Theme Options */
+/* ========== THEME OPTIONS ========== */
 .theme-options {
     display: flex;
     gap: 1.5rem;
@@ -645,9 +755,9 @@ export default {
 }
 
 .theme-preview {
-    width: 120px;
-    height: 80px;
-    border-radius: 8px;
+    width: 140px;
+    height: 100px;
+    border-radius: 12px;
     overflow: hidden;
     border: 2px solid transparent;
     transition: border-color 0.3s;
@@ -659,47 +769,51 @@ export default {
 }
 
 .light-theme {
-    background-color: #f8f9fa;
+    background: #f8f9fa;
 }
 
 .light-theme .theme-header {
-    height: 20px;
-    background-color: white;
+    height: 25px;
+    background: white;
     border-bottom: 1px solid #e9ecef;
 }
 
 .light-theme .theme-card {
-    height: 15px;
-    background-color: white;
+    height: 20px;
+    background: white;
     border: 1px solid #e9ecef;
-    border-radius: 4px;
-    margin: 5px 10px;
+    border-radius: 6px;
+    margin: 8px 12px;
 }
 
 .dark-theme {
-    background-color: #2d3748;
+    background: #1a1a2e;
 }
 
 .dark-theme .theme-header {
-    height: 20px;
-    background-color: #4a5568;
-    border-bottom: 1px solid #718096;
+    height: 25px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
 }
 
 .dark-theme .theme-card {
-    height: 15px;
-    background-color: #4a5568;
-    border: 1px solid #718096;
-    border-radius: 4px;
-    margin: 5px 10px;
+    height: 20px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    margin: 8px 12px;
 }
 
 .theme-label {
     font-size: 0.9rem;
-    color: var(--dark, #212529);
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
 }
 
-/* Checkbox Group */
+/* ========== CHECKBOX GROUP ========== */
 .checkbox-group {
     display: flex;
     flex-direction: column;
@@ -719,7 +833,13 @@ export default {
     cursor: pointer;
 }
 
-/* Password Wrapper */
+.checkbox-label span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* ========== PASSWORD WRAPPER ========== */
 .password-wrapper {
     position: relative;
 }
@@ -738,17 +858,10 @@ export default {
     color: var(--primary, #4361ee);
 }
 
-.form-text {
-    font-size: 0.85rem;
-    color: #6c757d;
-    margin-top: 0.25rem;
-    display: block;
-}
-
-/* Cards */
+/* ========== CARDS ========== */
 .card {
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     border: 1px solid #e9ecef;
     overflow: hidden;
     margin-bottom: 1.5rem;
@@ -772,17 +885,13 @@ export default {
     padding: 1.5rem;
 }
 
-.mb-4 {
-    margin-bottom: 1.5rem;
-}
-
-/* Danger Zone */
+/* ========== DANGER ZONE ========== */
 .danger-zone {
     border: 1px solid #dc3545;
 }
 
 .danger-zone .card-header {
-    background-color: #f8d7da;
+    background: #f8d7da;
     color: #721c24;
     border-bottom-color: #f5c6cb;
 }
@@ -792,12 +901,7 @@ export default {
     margin-bottom: 1rem;
 }
 
-/* Form Actions */
-.form-actions {
-    margin-top: 1.5rem;
-}
-
-/* Button Styles */
+/* ========== BUTTONS ========== */
 .btn {
     padding: 0.75rem 1.5rem;
     border: none;
@@ -838,9 +942,15 @@ export default {
     transform: none;
 }
 
-/* Responsive */
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
-    .settings {
+    .settings-manager {
         padding: 1rem;
     }
     
@@ -868,7 +978,21 @@ export default {
         align-items: center;
     }
     
+    .theme-preview {
+        width: 100%;
+        max-width: 200px;
+    }
+    
     .color-picker {
+        justify-content: center;
+    }
+    
+    .form-actions {
+        justify-content: center;
+    }
+    
+    .btn {
+        width: 100%;
         justify-content: center;
     }
 }
