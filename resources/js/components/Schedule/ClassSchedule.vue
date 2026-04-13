@@ -440,7 +440,7 @@ export default {
                 if (this.sortBy === 'day') {
                     comparison = daysOrder[a.day] - daysOrder[b.day];
                 } else if (this.sortBy === 'time') {
-                    comparison = a.time.localeCompare(b.time);
+                    comparison = this.convertTimeToMinutes(a.time) - this.convertTimeToMinutes(b.time);
                 } else if (this.sortBy === 'name') {
                     comparison = a.name.localeCompare(b.name);
                 }
@@ -478,6 +478,50 @@ export default {
             }
         },
         
+        // ========== TIME CONVERSION HELPER ==========
+        convertTimeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            
+            // Handle various time formats: "9:00 AM", "09:00", "9:00 - 10:30", "9:00AM", "9:00-10:30"
+            // Extract the start time (before dash or first part)
+            let startTime = timeStr.split('-')[0].trim();
+            
+            // Remove any extra spaces
+            startTime = startTime.replace(/\s+/g, ' ');
+            
+            // Parse the time
+            let hours = 0;
+            let minutes = 0;
+            let isPM = false;
+            
+            // Check for AM/PM
+            const ampmMatch = startTime.match(/(am|pm)/i);
+            if (ampmMatch) {
+                isPM = ampmMatch[1].toLowerCase() === 'pm';
+                startTime = startTime.replace(/(am|pm)/i, '').trim();
+            }
+            
+            // Parse hours and minutes
+            const timeParts = startTime.split(':');
+            if (timeParts.length >= 2) {
+                hours = parseInt(timeParts[0], 10);
+                minutes = parseInt(timeParts[1], 10);
+            } else {
+                // Try to parse as just hour
+                hours = parseInt(startTime, 10);
+                minutes = 0;
+            }
+            
+            // Convert to 24-hour format
+            if (isPM && hours < 12) {
+                hours += 12;
+            } else if (!isPM && hours === 12) {
+                hours = 0;
+            }
+            
+            return hours * 60 + minutes;
+        },
+        
         // ========== HELPER METHODS ==========
         getSolidColor(color) {
             if (!color) return '#4361ee';
@@ -495,7 +539,15 @@ export default {
         },
         
         getClassesForDay(day) {
-            return this.filteredAndSortedClasses.filter(cls => cls.day === day);
+            // Get classes for the specified day
+            const dayClasses = this.filteredAndSortedClasses.filter(cls => cls.day === day);
+            
+            // Sort by time (AM to PM)
+            return dayClasses.sort((a, b) => {
+                const timeA = this.convertTimeToMinutes(a.time);
+                const timeB = this.convertTimeToMinutes(b.time);
+                return timeA - timeB;
+            });
         },
         
         setFilter(filter) {
@@ -509,8 +561,13 @@ export default {
             }
         },
         
-        previousWeek() { this.currentWeekOffset--; },
-        nextWeek() { this.currentWeekOffset++; },
+        previousWeek() { 
+            this.currentWeekOffset--; 
+        },
+        
+        nextWeek() { 
+            this.currentWeekOffset++; 
+        },
         
         formatCurrentTime() {
             const now = new Date();
@@ -519,7 +576,8 @@ export default {
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12 || 12;
             const endHour = (now.getHours() + 1) % 24 || 12;
-            return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm} - ${endHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            const endAmpm = (now.getHours() + 1) >= 12 ? 'PM' : 'AM';
+            return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm} - ${endHour}:${minutes.toString().padStart(2, '0')} ${endAmpm}`;
         },
         
         setCurrentTime() {
@@ -564,7 +622,11 @@ export default {
         
         // ========== SEARCH & SORT ==========
         applySearch() {},
-        clearSearch() { this.searchQuery = ''; },
+        
+        clearSearch() { 
+            this.searchQuery = ''; 
+        },
+        
         toggleSortDirection() {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
         },
@@ -713,6 +775,12 @@ export default {
                 if (index !== -1) {
                     this.classes.splice(index, 1);
                 }
+                
+                // Update unique class names
+                const names = new Set();
+                this.classes.forEach(cls => names.add(cls.name));
+                this.uniqueClassNames = Array.from(names).sort();
+                
                 this.showNotification('Class deleted successfully!', 'success');
                 this.closeDeleteModal();
             } catch (error) {
@@ -792,7 +860,6 @@ export default {
     background: #e9ecef;
 }
 
-/* Active state - makes text white */
 .summary-item.active {
     background: #4361ee;
 }
@@ -803,7 +870,6 @@ export default {
     color: white;
 }
 
-/* Icon colors when not active */
 .summary-icon {
     font-size: 1rem;
     transition: color 0.2s;
@@ -821,7 +887,6 @@ export default {
     color: #f72585;
 }
 
-/* When active, icons become white */
 .summary-item.active .summary-icon {
     color: white;
 }
@@ -1003,7 +1068,6 @@ export default {
     border-right: none;
 }
 
-/* Today's column */
 .day-column.today {
     background: linear-gradient(135deg, #fff9e6, #fff5e6);
     position: relative;
@@ -1028,7 +1092,6 @@ export default {
     color: #e63946;
 }
 
-/* Weekend column */
 .day-column.weekend {
     background: #faf9fe;
 }
