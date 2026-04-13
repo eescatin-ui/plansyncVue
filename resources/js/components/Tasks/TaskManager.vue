@@ -975,7 +975,7 @@ export default {
 
 .card-body { margin-bottom: 1rem; }
 .task-title { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; }
-.task-description { color: #6c757d; font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.task-description { color: #6c757d; font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 
 .card-footer {
     display: flex;
