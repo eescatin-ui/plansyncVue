@@ -114,16 +114,25 @@ export default {
                 });
         },
         
-        logout() {
-            axios.post('/logout')
-                .then(() => {
-                    localStorage.removeItem('auth_token');
-                    window.location.href = '/login';
-                })
-                .catch(error => {
-                    console.error('Logout failed:', error);
-                });
-        }
+logout() {
+    // Use a form POST instead of axios to let Laravel handle the redirect
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/logout';
+
+    // Add CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
     }
 };
 </script>

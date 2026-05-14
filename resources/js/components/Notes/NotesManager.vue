@@ -248,7 +248,7 @@ export default {
         async fetchNotes() {
             this.loading = true;
             try {
-                const response = await axios.get('/notes');
+                const response = await axios.get('/api/notes');
                 this.notes = response.data;
                 console.log('Notes loaded:', this.notes);
             } catch (error) {
@@ -299,7 +299,7 @@ export default {
             document.body.style.overflow = 'hidden';
             
             try {
-                const response = await axios.get(`/notes/${note.id}/edit`);
+                const response = await axios.get(`/api/notes/${note.id}/edit`);
                 const noteData = response.data;
                 
                 this.form = {
@@ -342,11 +342,11 @@ export default {
                 
                 let response;
                 if (this.modalMode === 'add') {
-                    response = await axios.post('/notes', formData);
+                    response = await axios.post('/api/notes', formData);
                     this.notes.unshift(response.data);
                     this.showNotification('Note created successfully!', 'success');
                 } else {
-                    response = await axios.put(`/notes/${this.form.id}`, formData);
+                    response = await axios.put(`/api/notes/${this.form.id}`, formData);
                     const index = this.notes.findIndex(n => n.id === this.form.id);
                     if (index !== -1) {
                         this.notes.splice(index, 1, response.data);
@@ -404,7 +404,7 @@ export default {
             this.deleting = true;
             
             try {
-                await axios.delete(`/notes/${this.noteToDelete.id}`);
+                await axios.delete(`/api/notes/${this.noteToDelete.id}`);
                 
                 const index = this.notes.findIndex(n => n.id === this.noteToDelete.id);
                 if (index !== -1) {

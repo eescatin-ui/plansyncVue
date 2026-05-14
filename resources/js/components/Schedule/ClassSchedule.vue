@@ -312,6 +312,7 @@
 <script>
 import axios from 'axios';
 import _ from 'lodash';
+import api from '../../services/api';
 
 export default {
     name: 'ClassSchedule',
@@ -461,7 +462,7 @@ export default {
         async fetchClasses() {
             this.loading = true;
             try {
-                const response = await axios.get('/schedule');
+                const response = await axios.get('/api/schedule');
                 console.log('Classes fetched:', response.data);
                 this.classes = response.data;
                 
@@ -711,12 +712,12 @@ export default {
                 
                 let response;
                 if (this.modalMode === 'add') {
-                    response = await axios.post('/schedule', formData);
+                    response = await axios.post('/api/schedule', formData);
                     console.log('Class created:', response.data);
                     this.classes.push(response.data);
                     this.showNotification('Class added successfully!', 'success');
                 } else {
-                    response = await axios.put(`/schedule/${this.form.id}`, formData);
+                    response = await axios.put(`/api/schedule/${this.form.id}`, formData);
                     console.log('Class updated:', response.data);
                     const index = this.classes.findIndex(c => c.id === this.form.id);
                     if (index !== -1) {
@@ -770,7 +771,7 @@ export default {
             this.deleting = true;
             
             try {
-                await axios.delete(`/schedule/${this.classToDelete.id}`);
+                await axios.delete(`/api/schedule/${this.classToDelete.id}`);
                 const index = this.classes.findIndex(c => c.id === this.classToDelete.id);
                 if (index !== -1) {
                     this.classes.splice(index, 1);

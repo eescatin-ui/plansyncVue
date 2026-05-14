@@ -113,51 +113,52 @@ export default {
     },
 
     methods: {
-        async handleLogin() {
-            this.loading = true;
-            this.errors = {};
-            this.errorMessage = '';
+async handleLogin() {
+    this.loading = true;
+    this.errors = {};
+    this.errorMessage = '';
+    
+    try {
+        // ✅ POST to /api/login to get a Sanctum token
+        const response = await axios.post('/api/login', {
+            email: this.form.email,
+            password: this.form.password
+        });
+        
+        if (response.data.token) {
+            const token = response.data.token;
+            const userData = response.data.user;
             
-            try {
-                const response = await axios.post('/login', this.form);
-                
-                if (response.data.success) {
-                    // Store user data correctly
-                    const userData = response.data.user;
-                    
-                    localStorage.setItem('auth_token', 'authenticated');
-                    localStorage.setItem('user_id', userData.id);
-                    localStorage.setItem('user_name', userData.name);
-                    localStorage.setItem('user_email', userData.email);
-                    localStorage.setItem('user_avatar_color', userData.avatar_color || '#4361ee');
-                    
-                    // Also update window object for other components
-                    window.userId = userData.id;
-                    window.userName = userData.name;
-                    window.userEmail = userData.email;
-                    window.userAvatarColor = userData.avatar_color || '#4361ee';
-                    
-                    console.log('User logged in:', userData);
-                    
-                    // Redirect to dashboard
-                    this.$router.push('/dashboard');
-                } else {
-                    this.errorMessage = response.data.message || 'Invalid credentials';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                if (error.response && error.response.status === 422) {
-                    this.errors = error.response.data.errors;
-                    this.errorMessage = 'Please check your input.';
-                } else if (error.response && error.response.status === 401) {
-                    this.errorMessage = error.response.data.message || 'Invalid email or password.';
-                } else {
-                    this.errorMessage = 'An error occurred. Please try again.';
-                }
-            } finally {
-                this.loading = false;
-            }
+            // ✅ Store REAL token (same format as React Native)
+            localStorage.setItem('auth_token', token);  // NOT 'authenticated'
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // ✅ Set axios default header for all future requests
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
+            // Also set for window
+            window.authToken = token;
+            window.userId = userData.id;
+            window.userName = userData.name;
+            
+            console.log('Token stored:', token.substring(0, 20) + '...');
+            
+            // Redirect to dashboard
+            this.$router.push('/dashboard');
+        } else {
+            this.errorMessage = 'Login failed. No token received.';
         }
+    } catch (error) {
+        console.error('Login error:', error);
+        if (error.response?.status === 422) {
+            this.errors = error.response.data.errors;
+        } else {
+            this.errorMessage = error.response?.data?.message || 'Invalid credentials';
+        }
+    } finally {
+        this.loading = false;
+    }
+}
     }
 };
 </script>

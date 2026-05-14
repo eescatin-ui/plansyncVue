@@ -276,68 +276,48 @@
 
 <script>
 import axios from 'axios';
+import api from '../../services/api';
 
 export default {
-    name: 'Dashboard',
-    
     data() {
         return {
-            stats: {
-                classes_count: 0,
-                tasks_count: 0,
-                notes_count: 0,
-                reminders_count: 0
-            },
             classesToday: [],
             tasksUpcoming: [],
             notesRecent: [],
             recentReminders: [],
-            userName: 'Student',
-            loading: true
+            stats: {},
+            loading: true,
         };
     },
-
-    computed: {
-        formattedDate() {
-            const now = new Date();
-            return now.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        }
+    
+    async mounted() {
+        await this.fetchDashboardData();
     },
-
-    mounted() {
-        this.fetchDashboardData();
-    },
-
+    
     methods: {
-        // ========== DATA FETCHING ==========
         async fetchDashboardData() {
             this.loading = true;
             try {
-                const [statsRes, classesRes, tasksRes, notesRes, remindersRes] = await Promise.all([
-                    axios.get('/dashboard/stats'),
-                    axios.get('/schedule?today=true'),
-                    axios.get('/tasks?upcoming=true'),
-                    axios.get('/notes?recent=true'),
-                    axios.get('/reminders?recent=true')
+                const [scheduleRes, tasksRes, notesRes, remindersRes, statsRes] = await Promise.all([
+                    api.get('/schedule?today=true'),
+                    api.get('/tasks?upcoming=true'),
+                    api.get('/notes?recent=true'),
+                    api.get('/reminders?recent=true'),
+                    api.get('/dashboard/stats'),
                 ]);
                 
-                this.stats = statsRes.data;
-                this.classesToday = classesRes.data || [];
+                this.classesToday = scheduleRes.data || [];
                 this.tasksUpcoming = tasksRes.data || [];
                 this.notesRecent = notesRes.data || [];
                 this.recentReminders = remindersRes.data || [];
-                this.userName = window.userName || 'Student';
+                this.stats = statsRes.data || {};
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
             } finally {
                 this.loading = false;
             }
         },
+
 
         // ========== NAVIGATION METHODS ==========
         navigateTo(module) {

@@ -493,7 +493,7 @@ export default {
         async fetchTasks() {
             this.loading = true;
             try {
-                const response = await axios.get('/tasks');
+                const response = await axios.get('/api/tasks');
                 console.log('Tasks fetched:', response.data);
                 this.tasks = response.data;
             } catch (error) {
@@ -655,12 +655,12 @@ export default {
                 
                 let response;
                 if (this.modalMode === 'add') {
-                    response = await axios.post('/tasks', formData);
+                    response = await axios.post('/api/tasks', formData);
                     console.log('Task created:', response.data);
                     this.tasks.push(response.data);
                     this.showNotification('Task created successfully!', 'success');
                 } else {
-                    response = await axios.put(`/tasks/${this.form.id}`, formData);
+                    response = await axios.put(`/api/tasks/${this.form.id}`, formData);
                     console.log('Task updated:', response.data);
                     const index = this.tasks.findIndex(t => t.id === this.form.id);
                     if (index !== -1) {
@@ -711,7 +711,7 @@ export default {
             this.deleting = true;
             
             try {
-                await axios.delete(`/tasks/${this.taskToDelete.id}`);
+                await axios.delete(`/api/tasks/${this.taskToDelete.id}`);
                 const index = this.tasks.findIndex(t => t.id === this.taskToDelete.id);
                 if (index !== -1) {
                     this.tasks.splice(index, 1);

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class RegisterController extends Controller
 {
@@ -19,6 +20,7 @@ class RegisterController extends Controller
         ]);
         
         $user = User::create([
+            'id' => Str::uuid()->toString(),  // ← Add this line
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -27,9 +29,12 @@ class RegisterController extends Controller
         
         Auth::login($user);
         
+        $token = $user->createToken('auth_token')->plainTextToken;
+        
         return response()->json([
             'success' => true,
             'message' => 'Registration successful',
+            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

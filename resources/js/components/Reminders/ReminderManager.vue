@@ -549,7 +549,7 @@ export default {
         async fetchReminders() {
             this.loading = true;
             try {
-                const response = await axios.get('/reminders');
+                const response = await axios.get('/api/reminders');
                 this.reminders = response.data;
                 console.log('Reminders loaded:', this.reminders);
             } catch (error) {
@@ -670,7 +670,7 @@ export default {
             this.showModal = true; 
             document.body.style.overflow = 'hidden';
             try {
-                const res = await axios.get(`/reminders/${r.id}/edit`);
+                const res = await axios.get(`/api/reminders/${r.id}/edit`);
                 let t = res.data.reminder_time; 
                 if (t && t.includes('T')) t = t.substring(0, 16);
                 this.form = { id: res.data.id, title: res.data.title, reminder_time: t || '' };
@@ -715,12 +715,12 @@ export default {
                 
                 let response;
                 if (this.modalMode === 'add') {
-                    response = await axios.post('/reminders', formData);
+                    response = await axios.post('/api/reminders', formData);
                     console.log('Reminder created:', response.data);
                     this.reminders.unshift(response.data);
                     this.showNotification('Reminder created successfully!', 'success');
                 } else {
-                    response = await axios.put(`/reminders/${this.form.id}`, formData);
+                    response = await axios.put(`/api/reminders/${this.form.id}`, formData);
                     console.log('Reminder updated:', response.data);
                     const index = this.reminders.findIndex(r => r.id === this.form.id);
                     if (index !== -1) {
@@ -775,7 +775,7 @@ export default {
             if (!this.reminderToDelete || !this.reminderToDelete.id) return;
             this.deleting = true;
             try {
-                await axios.delete(`/reminders/${this.reminderToDelete.id}`);
+                await axios.delete(`/api/reminders/${this.reminderToDelete.id}`);
                 const idx = this.reminders.findIndex(r => r.id === this.reminderToDelete.id);
                 if (idx !== -1) this.reminders.splice(idx, 1);
                 this.showNotification('Reminder deleted successfully!', 'success');

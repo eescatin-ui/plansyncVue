@@ -394,7 +394,7 @@ export default {
             this.errorMessage = '';
             
             try {
-                const response = await axios.put('/settings/profile', this.profileForm);
+                const response = await axios.put('/api/settings/profile', this.profileForm);
                 this.successMessage = response.data.message || 'Profile updated successfully!';
                 
                 // Update window user data
@@ -424,7 +424,7 @@ export default {
             this.errorMessage = '';
             
             try {
-                const response = await axios.put('/settings/preferences', this.preferencesForm);
+                const response = await axios.put('/api/settings/preferences', this.preferencesForm);
                 this.successMessage = response.data.message || 'Preferences saved successfully!';
                 
                 // Apply theme immediately
@@ -472,7 +472,7 @@ export default {
             this.errorMessage = '';
             
             try {
-                const response = await axios.put('/settings/password', this.passwordForm);
+                const response = await axios.put('/api/settings/password', this.passwordForm);
                 this.successMessage = response.data.message || 'Password changed successfully!';
                 
                 // Clear password form
@@ -507,7 +507,7 @@ export default {
             this.deleting = true;
             
             try {
-                await axios.delete('/settings/account');
+                await axios.delete('/api/settings/account');
                 // Redirect to logout
                 window.location.href = '/logout';
             } catch (error) {

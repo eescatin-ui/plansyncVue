@@ -25,6 +25,23 @@ class Note extends Model
         'updated_at' => 'datetime',
     ];
 
+    // Map camelCase (React Native) to snake_case (database)
+    protected $appends = ['createdAt', 'updatedAt'];
+
+    public function getCreatedAtAttribute(): ?string
+    {
+        if (!isset($this->attributes['created_at'])) return null;
+        $val = $this->attributes['created_at'];
+        return $val instanceof \DateTime ? $val->toISOString() : $val;
+    }
+
+    public function getUpdatedAtAttribute(): ?string
+    {
+        if (!isset($this->attributes['updated_at'])) return null;
+        $val = $this->attributes['updated_at'];
+        return $val instanceof \DateTime ? $val->toISOString() : $val;
+    }
+
     // Relationship with User
     public function user()
     {
