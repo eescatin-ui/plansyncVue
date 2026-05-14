@@ -11,7 +11,13 @@ class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ClassSchedule::where('user_id', Auth::id());
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $query = ClassSchedule::where('user_id', $user->id);
         
         // Filter by day if provided
         if ($request->has('day')) {
@@ -26,11 +32,19 @@ class ScheduleController extends Controller
         
         $classes = $query->orderBy('time')->get();
         
+        // Check if the request expects a specific format
+        // For React Native (returns array directly - Vue.js expects this too)
         return response()->json($classes);
     }
     
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'time' => 'required|string|max:50',
@@ -40,7 +54,7 @@ class ScheduleController extends Controller
         ]);
         
         $class = ClassSchedule::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'name' => $validated['name'],
             'time' => $validated['time'],
             'location' => $validated['location'],
@@ -53,7 +67,9 @@ class ScheduleController extends Controller
     
     public function edit(Request $request, ClassSchedule $schedule)
     {
-        if ($schedule->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $schedule->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -62,7 +78,9 @@ class ScheduleController extends Controller
     
     public function update(Request $request, ClassSchedule $schedule)
     {
-        if ($schedule->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $schedule->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -79,14 +97,27 @@ class ScheduleController extends Controller
         return response()->json($schedule);
     }
     
-    public function destroy(ClassSchedule $schedule)
+    public function destroy(Request $request, ClassSchedule $schedule)
     {
-        if ($schedule->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $schedule->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
         $schedule->delete();
         
         return response()->json(['message' => 'Class deleted successfully']);
+    }
+    
+    public function show(Request $request, ClassSchedule $schedule)
+    {
+        $user = $request->user();
+        
+        if (!$user || $schedule->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        return response()->json($schedule);
     }
 }

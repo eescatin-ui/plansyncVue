@@ -10,8 +10,13 @@ class ReminderController extends Controller
 {
     public function index(Request $request)
     {
-        $reminders = Reminder::where('user_id', Auth::id())
-            ->where('type', 'user')
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $reminders = Reminder::where('user_id', $user->id)
             ->orderBy('reminder_time', 'asc')
             ->get();
         
@@ -20,24 +25,31 @@ class ReminderController extends Controller
     
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'reminder_time' => 'required|date',
         ]);
 
         $reminder = Reminder::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'title' => $validated['title'],
             'reminder_time' => $validated['reminder_time'],
-            'type' => 'user',
         ]);
         
         return response()->json($reminder, 201);
     }
-
-    public function edit(Reminder $reminder)
+    
+    public function edit(Request $request, Reminder $reminder)
     {
-        if ($reminder->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $reminder->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -46,7 +58,9 @@ class ReminderController extends Controller
     
     public function update(Request $request, Reminder $reminder)
     {
-        if ($reminder->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $reminder->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -59,12 +73,26 @@ class ReminderController extends Controller
         return response()->json($reminder);
     }
     
-    public function destroy(Reminder $reminder)
+    public function destroy(Request $request, Reminder $reminder)
     {
-        if ($reminder->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $reminder->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+        
         $reminder->delete();
-        return response()->json(['message' => 'Deleted']);
+        return response()->json(['message' => 'Reminder deleted successfully']);
+    }
+    
+    public function show(Request $request, Reminder $reminder)
+    {
+        $user = $request->user();
+        
+        if (!$user || $reminder->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        return response()->json($reminder);
     }
 }

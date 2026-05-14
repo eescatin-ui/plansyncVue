@@ -13,9 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // API middleware - needed for BOTH Vue SPA and React Native tokens
+        // API middleware - removed Sanctum, using custom token auth instead
         $middleware->api(prepend: [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
@@ -27,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth' => \App\Http\Middleware\Authenticate::class,
             'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
             'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
-            'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            'auth.token' => \App\Http\Middleware\ApiTokenAuth::class, // Our custom token auth
             'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
             'can' => \Illuminate\Auth\Middleware\Authorize::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,

@@ -20,7 +20,6 @@ class RegisterController extends Controller
         ]);
         
         $user = User::create([
-            'id' => Str::uuid()->toString(),  // ← Add this line
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -29,12 +28,16 @@ class RegisterController extends Controller
         
         Auth::login($user);
         
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Generate token manually (same as LoginController)
+        $plainTextToken = Str::random(60);
+        $hashedToken = hash('sha256', $plainTextToken);
+        $user->api_token = $hashedToken;
+        $user->save();
         
         return response()->json([
             'success' => true,
             'message' => 'Registration successful',
-            'token' => $token,
+            'token' => $plainTextToken,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

@@ -10,29 +10,39 @@ class NoteController extends Controller
 {
     public function index(Request $request)
     {
-        $notes = Note::where('user_id', Auth::id())
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $notes = Note::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
         
-        // Always return JSON for SPA
         return response()->json($notes);
     }
     
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'tags' => 'nullable|string'
         ]);
         
-        // Convert tags string to array
         $tags = $validated['tags'] 
             ? array_map('trim', explode(',', $validated['tags']))
             : [];
         
         $note = Note::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'title' => $validated['title'],
             'content' => $validated['content'],
             'tags' => $tags
@@ -43,8 +53,9 @@ class NoteController extends Controller
     
     public function edit(Request $request, Note $note)
     {
-        // Check authorization
-        if ($note->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $note->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -53,7 +64,9 @@ class NoteController extends Controller
     
     public function update(Request $request, Note $note)
     {
-        if ($note->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $note->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -76,14 +89,27 @@ class NoteController extends Controller
         return response()->json($note);
     }
     
-    public function destroy(Note $note)
+    public function destroy(Request $request, Note $note)
     {
-        if ($note->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $note->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
         $note->delete();
         
         return response()->json(['message' => 'Note deleted successfully']);
+    }
+    
+    public function show(Request $request, Note $note)
+    {
+        $user = $request->user();
+        
+        if (!$user || $note->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        return response()->json($note);
     }
 }

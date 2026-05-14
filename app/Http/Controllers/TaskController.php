@@ -11,7 +11,13 @@ class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Task::where('user_id', Auth::id());
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $query = Task::where('user_id', $user->id);
         
         // Apply filters
         if ($request->has('status') && $request->status !== 'all') {
@@ -29,11 +35,18 @@ class TaskController extends Controller
         
         $tasks = $query->orderBy('due_date', 'asc')->get();
         
+        // Return array directly (works for both Vue and React Native)
         return response()->json($tasks);
     }
     
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -43,9 +56,9 @@ class TaskController extends Controller
         ]);
         
         $task = Task::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? '',
             'due_date' => $validated['due_date'],
             'status' => $validated['status'],
             'priority' => $validated['priority']
@@ -56,7 +69,9 @@ class TaskController extends Controller
     
     public function edit(Request $request, Task $task)
     {
-        if ($task->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $task->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -65,7 +80,9 @@ class TaskController extends Controller
     
     public function update(Request $request, Task $task)
     {
-        if ($task->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $task->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
@@ -82,14 +99,44 @@ class TaskController extends Controller
         return response()->json($task);
     }
     
-    public function destroy(Task $task)
+    public function destroy(Request $request, Task $task)
     {
-        if ($task->user_id !== Auth::id()) {
+        $user = $request->user();
+        
+        if (!$user || $task->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
         $task->delete();
         
         return response()->json(['message' => 'Task deleted successfully']);
+    }
+    
+    public function show(Request $request, Task $task)
+    {
+        $user = $request->user();
+        
+        if (!$user || $task->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        return response()->json($task);
+    }
+    
+    public function updateStatus(Request $request, Task $task)
+    {
+        $user = $request->user();
+        
+        if (!$user || $task->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $validated = $request->validate([
+            'status' => 'required|in:todo,inprogress,done'
+        ]);
+        
+        $task->update(['status' => $validated['status']]);
+        
+        return response()->json($task);
     }
 }

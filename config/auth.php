@@ -3,7 +3,7 @@
 return [
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
+        'guard' => env('AUTH_GUARD', 'web'),  // Changed from 'api' to 'web' as default
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -19,8 +19,9 @@ return [
         ],
 
         'api' => [
-            'driver' => 'sanctum',
+            'driver' => 'token',  // Using token driver instead of sanctum
             'provider' => 'users',
+            'hash' => false,
         ],
     ],
 

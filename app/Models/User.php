@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+// Remove: use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    // Only use each trait ONCE
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;  // Removed HasApiTokens
 
     protected $fillable = [
         'id',
         'name',
         'email',
         'password',
+        'api_token',        // Add this
         'avatar_color',
         'profile_image',
         'is_admin',
@@ -26,6 +26,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'api_token',        // Hide api_token when serializing
     ];
 
     protected $casts = [
@@ -33,7 +34,6 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_admin' => 'boolean',
         'preferences' => 'array',
-        // Remove 'avatar_color' => 'string' - string is default, no need to cast
     ];
 
     // Relationships
@@ -77,5 +77,22 @@ class User extends Authenticatable
     public function getAvatarColorAttribute($value): string
     {
         return $value ?: '#4361ee';
+    }
+    
+    // Optional: Helper method to generate token
+    public function generateToken()
+    {
+        $plainTextToken = \Illuminate\Support\Str::random(60);
+        $this->api_token = hash('sha256', $plainTextToken);
+        $this->save();
+        
+        return $plainTextToken;
+    }
+    
+    // Optional: Helper method to revoke token
+    public function revokeToken()
+    {
+        $this->api_token = null;
+        $this->save();
     }
 }
