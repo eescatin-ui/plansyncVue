@@ -63,7 +63,15 @@
             <td>#{{ user.id }}</td>
             <td>
               <div class="user-name">
-                <div class="user-avatar">{{ getUserInitials(user.name) }}</div>
+                <div class="user-avatar" :style="{ backgroundColor: user.avatar_color || '#4361ee' }">
+                  <img 
+                    v-if="user.profile_image" 
+                    :src="getProfileImageUrl(user.profile_image)" 
+                    :alt="user.name"
+                    class="avatar-image"
+                  >
+                  <span v-else class="avatar-initials">{{ getUserInitials(user.name) }}</span>
+                </div>
                 {{ user.name }}
               </div>
             </td>
@@ -139,7 +147,15 @@
           </div>
           <div class="modal-body" v-if="viewingUser">
             <div class="user-detail-header">
-              <div class="user-detail-avatar">{{ getUserInitials(viewingUser.name) }}</div>
+              <div class="user-detail-avatar" :style="{ backgroundColor: viewingUser.avatar_color || '#4361ee' }">
+                <img 
+                  v-if="viewingUser.profile_image" 
+                  :src="getProfileImageUrl(viewingUser.profile_image)" 
+                  :alt="viewingUser.name"
+                  class="avatar-image-large"
+                >
+                <span v-else class="avatar-initials-large">{{ getUserInitials(viewingUser.name) }}</span>
+              </div>
               <div>
                 <h3>{{ viewingUser.name }}</h3>
                 <p>{{ viewingUser.email }}</p>
@@ -166,6 +182,7 @@
             <div class="user-detail-info">
               <p><strong>Joined:</strong> {{ formatDate(viewingUser.created_at) }}</p>
               <p><strong>Last Updated:</strong> {{ formatDate(viewingUser.updated_at) }}</p>
+              <p><strong>Avatar Color:</strong> <span :style="{ backgroundColor: viewingUser.avatar_color, display: 'inline-block', width: '20px', height: '20px', borderRadius: '4px', verticalAlign: 'middle' }"></span> {{ viewingUser.avatar_color || '#4361ee' }}</p>
             </div>
           </div>
           <div class="modal-footer">
@@ -245,7 +262,6 @@ export default {
         
         console.log('Users API Response:', response.data);
         
-        // The API returns { users: [], total: number }
         if (response.data.users) {
           this.usersList = response.data.users;
         } else if (Array.isArray(response.data)) {
@@ -268,6 +284,21 @@ export default {
     clearSearch() {
       this.filters.search = '';
       this.fetchUsers();
+    },
+    
+    getProfileImageUrl(path) {
+      if (!path) return null;
+      // If path already starts with /storage, return as is
+      if (path.startsWith('/storage')) {
+        return path;
+      }
+      // Otherwise, prepend /storage
+      return '/storage/' + path;
+    },
+    
+    getUserInitials(name) {
+      if (!name) return 'NA';
+      return name.substring(0, 2).toUpperCase();
     },
     
     openUserModal() {
@@ -380,11 +411,6 @@ export default {
       this.showDeleteModal = false;
     },
     
-    getUserInitials(name) {
-      if (!name) return 'NA';
-      return name.substring(0, 2).toUpperCase();
-    },
-    
     formatDate(date) {
       if (!date) return 'N/A';
       const d = new Date(date);
@@ -482,7 +508,6 @@ export default {
 .user-avatar {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -490,6 +515,30 @@ export default {
   color: white;
   font-weight: bold;
   font-size: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.avatar-image-large {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials-large {
+  font-size: 24px;
+  font-weight: bold;
 }
 
 .badge {
@@ -690,7 +739,6 @@ export default {
 .user-detail-avatar {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -698,6 +746,8 @@ export default {
   color: white;
   font-size: 24px;
   font-weight: bold;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 .user-detail-stats {

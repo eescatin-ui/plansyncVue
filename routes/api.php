@@ -33,9 +33,9 @@ Route::middleware('auth.token')->group(function () {
     
     Route::get('/schedule', [ScheduleController::class, 'index']);
     Route::post('/schedule', [ScheduleController::class, 'store']);
-    Route::get('/schedule/{classSchedule}', [ScheduleController::class, 'show']);
-    Route::put('/schedule/{classSchedule}', [ScheduleController::class, 'update']);
-    Route::delete('/schedule/{classSchedule}', [ScheduleController::class, 'destroy']);
+    Route::get('/schedule/{schedule}', [ScheduleController::class, 'show']);
+    Route::put('/schedule/{schedule}', [ScheduleController::class, 'update']);
+    Route::delete('/schedule/{schedule}', [ScheduleController::class, 'destroy']);
     
     // Courses alias
     Route::get('/courses', [ScheduleController::class, 'index']);

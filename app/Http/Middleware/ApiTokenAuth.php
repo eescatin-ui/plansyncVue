@@ -18,13 +18,17 @@ class ApiTokenAuth
             $user = User::where('api_token', $hashedToken)->first();
             
             if ($user) {
-                auth()->login($user);
+                auth()->guard('web')->login($user);
+                // Explicitly set user resolver so $request->user() always works
+                $request->setUserResolver(function () use ($user) {
+                    return $user;
+                });
                 return $next($request);
             }
         }
         
         // 2. Fall back to session auth (Vue SPA)
-        if (auth()->check()) {
+        if (auth()->guard('web')->check()) {
             return $next($request);
         }
         

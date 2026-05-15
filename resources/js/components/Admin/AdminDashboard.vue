@@ -96,9 +96,15 @@
             </div>
             <div v-else class="user-list">
               <div v-for="user in recentUsers" :key="user.id" class="user-item">
-                <div class="user-avatar" :style="{ background: getAvatarColor(user.name) }">
-                  {{ getUserInitials(user.name) }}
-                </div>
+<div class="user-avatar" :style="{ backgroundColor: user.avatar_color || '#4361ee' }">
+  <img 
+    v-if="user.profile_image" 
+    :src="getProfileImageUrl(user.profile_image)" 
+    :alt="user.name"
+    class="avatar-img"
+  >
+  <span v-else>{{ getUserInitials(user.name) }}</span>
+</div>
                 <div class="user-info">
                   <div class="user-name">{{ user.name }}</div>
                   <div class="user-email">{{ user.email }}</div>
@@ -270,6 +276,14 @@ export default {
         this.loadRecentTasks()
       ]);
     },
+
+    getProfileImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith('/storage')) {
+    return path;
+  }
+  return '/storage/' + path;
+},
     
     getTaskPercentage(status) {
       const total = this.stats.totalTasks || 0;
@@ -486,6 +500,13 @@ export default {
   font-weight: bold;
   font-size: 1rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-info {

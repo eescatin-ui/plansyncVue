@@ -27,7 +27,7 @@ class AdminUserController extends Controller
                 });
             }
             
-            $users = $query->latest()->get();
+            $users = $query->orderBy('created_at', 'desc')->get();
             
             // Add counts for each user (same as ClassSchedule with user relation)
             foreach ($users as $user) {
